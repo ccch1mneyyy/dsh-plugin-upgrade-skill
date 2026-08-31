@@ -132,12 +132,12 @@ async function loadCardSets() {
       const end = headings[index + 1]?.index ?? body.length
       const card = body.slice(heading.index, end)
       const field = (name) => new RegExp(`^- \\*\\*${name}\\*\\*:\\s*([^\\r\\n]+)`, 'm').exec(card)?.[1]?.trim()
-      const impact = field('影响触点') ?? ''
+      const impact = field('Touchpoints') ?? ''
       return {
         id: heading[1],
         title: heading[2].trim(),
-        type: field('类型'),
-        action: field('操作级别'),
+        type: field('Type'),
+        action: field('Action level'),
         impact,
         touchpoints: [...new Set([...impact.matchAll(/#([1-7])/g)].map((match) => Number(match[1])))].sort(),
         sourceFile: name,

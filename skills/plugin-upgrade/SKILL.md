@@ -9,7 +9,7 @@ English | [简体中文](SKILL.zh-CN.md)
 
 Safely handle three task types: read-only update inspection, installed-plugin upgrades, and DSH host version compatibility migration. If user intent is unclear, confirm the mode first; never let "help me check for updates" slide into installing or changing code.
 
-Note: the version cards under `references/` are kept in Chinese; card IDs, field names, and cited commands are language-neutral.
+Note: the version cards and reference docs under `references/` are in English; card IDs and cited commands are language-neutral.
 
 ## Step 0: choose a mode
 

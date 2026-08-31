@@ -30,7 +30,7 @@
 
 - `kind/schema/from/to/status/coverage/cardCount/idPrefix/verifiedAt` frontmatter；
 - 完整且全仓唯一的 ID，例如 `DSH-X.Y.Z-A1-01`（落地时把版本占位符替换为真实坐标）；
-- `类型/适用对象/影响触点/操作级别/症状/迁移配方/验证/来源` 全部字段；
+- `Type/Applies to/Touchpoints/Action level/Symptoms/Migration recipe/Verification/Source` 全部字段（卡片字段名已英文化）；
 - 固定 tag/commit 的一手来源；同 tag 可取得源码时，不只引用 release notes。
 
 触点编号使用 [pre-flight](skills/plugin-upgrade/references/pre-flight.md) 的 **#1–#7**。

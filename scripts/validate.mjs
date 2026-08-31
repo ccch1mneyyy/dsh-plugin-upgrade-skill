@@ -118,7 +118,7 @@ const cardFiles = (await readdir(referencesDir))
   .filter((name) => /^v.*\.md$/.test(name))
   .map((name) => join(referencesDir, name))
 const requiredMeta = ['kind', 'schema', 'from', 'to', 'status', 'coverage', 'cardCount', 'idPrefix', 'verifiedAt']
-const requiredFields = ['类型', '适用对象', '影响触点', '操作级别', '症状', '迁移配方', '验证', '来源']
+const requiredFields = ['Type', 'Applies to', 'Touchpoints', 'Action level', 'Symptoms', 'Migration recipe', 'Verification', 'Source']
 const allowedTypes = new Set(['breaking', 'behavior', 'capability', 'fix', 'security', 'privacy'])
 const allowedActions = /^(required|conditional|optional|informational|required-if-[A-Za-z0-9.-]+)$/
 const tag = /^dsh-v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/
@@ -170,12 +170,12 @@ for (const file of cardFiles) {
     for (const field of requiredFields) {
       if (!new RegExp(`^- \\*\\*${field}\\*\\*:`, 'm').test(card)) fail(file, `${id} missing field: ${field}`)
     }
-    const type = /^- \*\*类型\*\*:\s*([^\r\n]+)/m.exec(card)?.[1]?.trim()
-    const action = /^- \*\*操作级别\*\*:\s*([^\r\n]+)/m.exec(card)?.[1]?.trim()
+    const type = /^- \*\*Type\*\*:\s*([^\r\n]+)/m.exec(card)?.[1]?.trim()
+    const action = /^- \*\*Action level\*\*:\s*([^\r\n]+)/m.exec(card)?.[1]?.trim()
     if (!allowedTypes.has(type)) fail(file, `${id} invalid type: ${type}`)
     if (!allowedActions.test(action ?? '')) fail(file, `${id} invalid action: ${action}`)
-    if (!/^- \*\*来源\*\*:[\s\S]*?https:\/\//m.test(card)) fail(file, `${id} must cite a primary URL`)
-    const sourceLine = /^- \*\*来源\*\*:([^\r\n]+)/m.exec(card)?.[1] ?? ''
+    if (!/^- \*\*Source\*\*:[\s\S]*?https:\/\//m.test(card)) fail(file, `${id} must cite a primary URL`)
+    const sourceLine = /^- \*\*Source\*\*:([^\r\n]+)/m.exec(card)?.[1] ?? ''
     for (const match of sourceLine.matchAll(/https:\/\/[^ )]+/g)) {
       if (/github\.com\/[^/]+\/[^/]+\/blob\/(main|master)([/?#]|$)/.test(match[0])) {
         fail(file, `${id} source must pin a tag or commit, got an unpinned blob link: ${match[0]}`)
@@ -210,10 +210,10 @@ for (const file of markdownFiles) {
 // The rollup is a current navigation document, not an unchecked historical snapshot.
 const rollupFile = join(referencesDir, 'rollup-0.1.2.md')
 const rollupText = await readFile(rollupFile, 'utf8')
-for (const required of ['#7 子进程']) {
+for (const required of ['#7 subprocess']) {
   if (!rollupText.includes(required)) fail(rollupFile, `missing current rollup contract: ${required}`)
 }
-if (/Consumer.*永不 reject|#6 子进程|git checkout <tag> -- pnpm-lock\.yaml/.test(rollupText)) {
+if (/Consumer.*never reject|#6 subprocess|git checkout <tag> -- pnpm-lock\.yaml/.test(rollupText)) {
   fail(rollupFile, 'contains a retired Remote, touchpoint, or rollback rule')
 }
 
