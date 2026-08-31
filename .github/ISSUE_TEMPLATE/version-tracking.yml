@@ -1,0 +1,62 @@
+name: 版本走廊认领
+description: 认领一个 DSH 版本走廊并准备迁移卡片
+labels:
+  - version-tracking
+  - card
+body:
+  - type: input
+    id: from
+    attributes:
+      label: from 精确 tag 或 commit
+      description: 使用官方 release tag 或完整 commit hash，不要填写 latest。
+      placeholder: dsh-v0.1.1-rc.1
+    validations:
+      required: true
+  - type: input
+    id: to
+    attributes:
+      label: to 精确 tag 或 commit
+      description: 目标官方 release tag 或完整 commit hash。
+      placeholder: dsh-v0.1.1-rc.2
+    validations:
+      required: true
+  - type: input
+    id: corridor
+    attributes:
+      label: 目标卡片或走廊
+      description: 说明准备新增的 card-set 文件和版本边。
+      placeholder: v0.1.1-rc.2.md
+    validations:
+      required: true
+  - type: textarea
+    id: sources
+    attributes:
+      label: 固定一手来源
+      description: 填写上游源码、固定 tag、release notes 或架构决策链接。
+      placeholder: https://github.com/deepseek-ai/deepseek-harness/releases/tag/...
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 认领范围
+      description: 说明会检查的影响触点、消费者面和未覆盖内容。
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: 预计验证
+      description: 列出校验命令、实测入口和无法覆盖的平台或凭据边界。
+      placeholder: node scripts/validate.mjs
+    validations:
+      required: true
+  - type: checkboxes
+    id: coordination
+    attributes:
+      label: 协作确认
+      options:
+        - label: 我已检查现有 Issue 和 PR，没有重复认领，或已在说明中完成协调。
+          required: true
+        - label: 我会使用 curated 覆盖声明，不把卡片描述成完整 API diff。
+          required: true
