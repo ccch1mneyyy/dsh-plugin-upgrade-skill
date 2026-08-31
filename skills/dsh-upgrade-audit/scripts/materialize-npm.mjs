@@ -16,6 +16,7 @@ import { mkdirSync, writeFileSync, readdirSync, readFileSync, existsSync } from 
 import { join } from 'node:path'
 
 const CLI = '@deepseek-ai/dsh'
+const NPM = process.platform === 'win32' ? 'npm.cmd' : 'npm'
 const DEFAULT_SUPPLEMENTS = ['@deepseek-ai/dsh-session-persistence-sqlite']
 const args = process.argv.slice(2)
 const [va, vb, out] = args.filter((a) => !a.startsWith('--'))
@@ -37,13 +38,27 @@ function normalizeTag(tag) {
 }
 
 function npm(...a) {
-  return execFileSync('npm', [...a, '--loglevel=error'], { encoding: 'utf8', maxBuffer: 1 << 28, stdio: ['ignore', 'pipe', 'pipe'] })
+  const commandArgs = [...a, '--loglevel=error']
+  if (process.platform === 'win32' && commandArgs.some((arg) => /[&|<>^()%!"`\r\n]/.test(arg))) {
+    throw new Error('npm arguments contain unsupported Windows shell characters')
+  }
+  return execFileSync(NPM, commandArgs, {
+    encoding: 'utf8',
+    maxBuffer: 1 << 28,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    shell: process.platform === 'win32',
+  })
+}
+
+/** Convert GitHub-style dsh-v tags to registry versions while preserving dist-tags. */
+function registrySpec(spec) {
+  return spec.replace(/^dsh-/, '').replace(/^v(?=\d)/, '')
 }
 
 /** Resolve a spec (version or dist-tag) against the registry; null when absent. */
 function resolve(spec) {
   try {
-    return { spec, resolved: JSON.parse(npm('view', `${CLI}@${spec}`, 'version', '--json')) }
+    return { spec, resolved: JSON.parse(npm('view', `${CLI}@${registrySpec(spec)}`, 'version', '--json')) }
   } catch {
     return { spec, resolved: null }
   }
@@ -58,45 +73,88 @@ if (missing.length) {
   process.exit(1)
 }
 
-const supplementsResolved = supplements.map((p) => {
+function resolvePackageVersion(pkg, version) {
   try {
-    return { pkg: p, resolved: JSON.parse(npm('view', `${p}@${b.resolved}`, 'version', '--json')) }
+    return JSON.parse(npm('view', `${pkg}@${version}`, 'version', '--json'))
   } catch {
-    return { pkg: p, resolved: null }
+    return null
   }
-})
+}
 
-/** Install one root: CLI closure + supplement packages, scripts disabled. */
-function materialize(root, version) {
+const supplementsResolved = supplements.map((pkg) => ({
+  pkg,
+  resolvedA: resolvePackageVersion(pkg, a.resolved),
+  resolvedB: resolvePackageVersion(pkg, b.resolved),
+}))
+
+/** Install one root: CLI closure plus the supplements available for that side. */
+function materialize(root, version, side) {
   mkdirSync(root, { recursive: true })
   writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'dsh-upgrade-audit-root', private: true }, null, 2) + '\n')
-  const specs = [`${CLI}@${version}`, ...supplements.filter((s) => s.resolved).map((s) => `${s.pkg}@${version}`)]
-  execFileSync('npm', ['install', '--ignore-scripts', '--omit=dev', '--no-audit', '--no-fund', '--loglevel=error', ...specs], {
+  const specs = [
+    `${CLI}@${version}`,
+    ...supplementsResolved
+      .map((supplement) => ({ pkg: supplement.pkg, resolved: supplement[side] }))
+      .filter((supplement) => supplement.resolved)
+      .map((supplement) => `${supplement.pkg}@${supplement.resolved}`),
+  ]
+  const installArgs = ['install', '--ignore-scripts', '--omit=dev', '--no-audit', '--no-fund', '--loglevel=error', ...specs]
+  if (process.platform === 'win32' && installArgs.some((arg) => /[&|<>^()%!"`\r\n]/.test(arg))) {
+    throw new Error('npm arguments contain unsupported Windows shell characters')
+  }
+  execFileSync(NPM, installArgs, {
     cwd: root,
     encoding: 'utf8',
     maxBuffer: 1 << 28,
     stdio: ['ignore', 'ignore', 'inherit'],
+    shell: process.platform === 'win32',
   })
 }
 
-materialize(join(out, 'a'), a.resolved)
-materialize(join(out, 'b'), b.resolved)
+materialize(join(out, 'a'), a.resolved, 'resolvedA')
+materialize(join(out, 'b'), b.resolved, 'resolvedB')
 
-/** Scoped packages present under node_modules/@deepseek-ai in a root. */
+/** Find scoped packages in root and nested node_modules directories. */
 function scopedPkgs(root) {
-  const dir = join(root, 'node_modules', '@deepseek-ai')
-  return existsSync(dir) ? readdirSync(dir).sort() : []
+  const packages = new Map()
+  const visited = new Set()
+
+  function visit(directory) {
+    if (visited.has(directory)) return
+    visited.add(directory)
+    const modules = join(directory, 'node_modules')
+    if (!existsSync(modules)) return
+
+    const scope = join(modules, '@deepseek-ai')
+    if (existsSync(scope)) {
+      for (const entry of readdirSync(scope, { withFileTypes: true })) {
+        if (!entry.isDirectory() || entry.isSymbolicLink()) continue
+        const packageDirectory = join(scope, entry.name)
+        if (existsSync(join(packageDirectory, 'package.json')) && !packages.has(entry.name)) {
+          packages.set(entry.name, packageDirectory)
+        }
+      }
+    }
+
+    for (const entry of readdirSync(modules, { withFileTypes: true })) {
+      if (!entry.isDirectory() || entry.isSymbolicLink() || entry.name === '.bin') continue
+      visit(join(modules, entry.name))
+    }
+  }
+
+  visit(root)
+  return packages
 }
 const pkgsA = scopedPkgs(join(out, 'a'))
 const pkgsB = scopedPkgs(join(out, 'b'))
 const manifestFields = ['version', 'bin', 'files', 'exports', 'dependencies', 'peerDependencies', 'main', 'types', 'engines']
 
 let manifestDiff = `# package.json manifest diff: ${CLI} ${a.resolved} -> ${b.resolved}\n\n`
-for (const name of new Set([...pkgsA, ...pkgsB].sort())) {
-  const pa = join(out, 'a', 'node_modules', '@deepseek-ai', name, 'package.json')
-  const pb = join(out, 'b', 'node_modules', '@deepseek-ai', name, 'package.json')
-  const fa = existsSync(pa) ? JSON.parse(readFileSync(pa, 'utf8')) : null
-  const fb = existsSync(pb) ? JSON.parse(readFileSync(pb, 'utf8')) : null
+for (const name of new Set([...pkgsA.keys(), ...pkgsB.keys()].sort())) {
+  const pa = pkgsA.get(name)
+  const pb = pkgsB.get(name)
+  const fa = pa ? JSON.parse(readFileSync(join(pa, 'package.json'), 'utf8')) : null
+  const fb = pb ? JSON.parse(readFileSync(join(pb, 'package.json'), 'utf8')) : null
   if (!fa || !fb) {
     manifestDiff += `## ${name}: ${fa ? 'REMOVED in b' : 'ADDED in b'}\n\n`
     continue
@@ -148,10 +206,10 @@ const stats = {
   publishedVersions: published,
   outDir: out,
   supplements: supplementsResolved,
-  packagesA: pkgsA.length,
-  packagesB: pkgsB.length,
-  packagesOnlyInA: pkgsA.filter((p) => !pkgsB.includes(p)),
-  packagesOnlyInB: pkgsB.filter((p) => !pkgsA.includes(p)),
+  packagesA: pkgsA.size,
+  packagesB: pkgsB.size,
+  packagesOnlyInA: [...pkgsA.keys()].filter((p) => !pkgsB.has(p)),
+  packagesOnlyInB: [...pkgsB.keys()].filter((p) => !pkgsA.has(p)),
   github: enrichment,
   artifacts: ['a/', 'b/', 'manifest-diff.txt', ...(enrichment.ok ? ['commits.txt', 'reverts.txt'] : [])],
 }
