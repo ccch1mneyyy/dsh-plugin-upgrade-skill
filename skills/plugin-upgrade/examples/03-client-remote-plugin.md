@@ -1,5 +1,7 @@
 # 示例 03：Web Client 使用 RemoteResult
 
+简体中文 | [English](03-client-remote-plugin.en.md)
+
 **场景**：浏览器侧 `dsh.client` 插件调用 Host Remote。该路径与 Host 领域服务直连不同。
 
 **影响触点**：#3 服务/Remote　复杂度：⭐⭐

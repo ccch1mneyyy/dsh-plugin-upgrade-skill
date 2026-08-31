@@ -1,5 +1,7 @@
 # 示例 01：简单客户端插件
 
+简体中文 | [English](01-simple-client-plugin.en.md)
+
 **场景**: 一个纯客户端 UI 插件，只用了 `dsh-client-runtime` 获取 settings。
 
 **影响触点**: #3 内部服务探测（客户端导入）

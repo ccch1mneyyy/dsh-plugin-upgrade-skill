@@ -1,5 +1,7 @@
 # legacy-plugin · 七类触点静态夹具
 
+简体中文 | [English](README.en.md)
+
 这是一个故意包含旧耦合与错误假设的静态夹具，用来验证
 [pre-flight.md](../../references/pre-flight.md) 能检出七类触点。它不是可安装插件，
 不得执行、不得发布、不能编译是设计使然。

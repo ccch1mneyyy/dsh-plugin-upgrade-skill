@@ -1,5 +1,7 @@
 # 示例 07：17 个工具插件 × 三个版本台阶的批量迁移操作手册
 
+简体中文 | [English](07-multi-repo-batch-migration.en.md)
+
 **场景**: omdsh-dev 组织 17 个工具/诊断插件仓库（calculator/json/time/encoding/diff/stat/schema/markdown/
 csv/regex、security-audit、session-health、plugin-check、plugin-dev、tariff、sandbox-micro、toolkit）连续
 三个版本台阶的宿主升级批量适配：`0.1.0-rc.8 → 0.1.1-rc.2 → 0.1.2-alpha.1 → 0.1.2-alpha.2`。与

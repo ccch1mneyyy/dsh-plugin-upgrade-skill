@@ -1,5 +1,7 @@
 # 示例 02：Host 平面插件改为领域服务直连
 
+简体中文 | [English](02-host-side-plugin.en.md)
+
 **场景**：0.1.1 插件在 Host 平面注入 `apiProxy`，用于读取模型提供方；升级后入口永久
 `pending (waiting for service: apiProxy)`。
 
