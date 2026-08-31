@@ -89,7 +89,7 @@ function scopedPkgs(root) {
 }
 const pkgsA = scopedPkgs(join(out, 'a'))
 const pkgsB = scopedPkgs(join(out, 'b'))
-const manifestFields = ['version', 'bin', 'files', 'exports', 'dependencies', 'peerDependencies']
+const manifestFields = ['version', 'bin', 'files', 'exports', 'dependencies', 'peerDependencies', 'main', 'types', 'engines']
 
 let manifestDiff = `# package.json manifest diff: ${CLI} ${a.resolved} -> ${b.resolved}\n\n`
 for (const name of new Set([...pkgsA, ...pkgsB].sort())) {
