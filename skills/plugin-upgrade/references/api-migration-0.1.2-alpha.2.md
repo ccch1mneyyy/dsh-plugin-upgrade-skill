@@ -1,101 +1,98 @@
-# 接口迁移实战 · 0.1.1-rc.2 → 0.1.2-alpha.2
+# API Migration in Practice · 0.1.1-rc.2 → 0.1.2-alpha.2
 
-> 定位：面向插件作者的接口 ledger。重点回答三件事：哪些接口变了、旧写法会怎样
-> 失败、目标版本的 best practice 是什么。安装流程、产品功能清单和 UI 变化不在本文展开。
+> Audience: an interface ledger for plugin authors. It answers three things: which
+> interfaces changed, how legacy patterns fail, and what the target version's best
+> practice is. Installation flows, product feature lists, and UI changes are not
+> covered here.
 >
-> 精确走廊：`dsh-v0.1.1-rc.2`
+> Exact corridor: `dsh-v0.1.1-rc.2`
 > (`b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`) → `dsh-v0.1.2-alpha.1`
 > (`cd5ef8148158c3a752a658978873241fdf8e2bbc`) → `dsh-v0.1.2-alpha.2`
-> (`0a53fb55bea101816fa226bb964ae2bed71c343b`)。
+> (`0a53fb55bea101816fa226bb964ae2bed71c343b`).
 >
-> 版本状态：截至 2026-08-30，上游 `0.1.2` 系列的最新 tag 是
-> `dsh-v0.1.2-alpha.2`，尚无 `dsh-v0.1.2` final tag。正式版发布后必须重新核对
-> package exports、声明类型、实现与测试，不能把本文直接标成 final 兼容结论。
+> Version status: as of 2026-08-30, the latest tag in the upstream `0.1.2` series is
+> `dsh-v0.1.2-alpha.2`; there is no `dsh-v0.1.2` final tag yet. Once the final release
+> ships, package exports, declared types, implementations, and tests must be re-checked;
+> this document must not be directly marked as a final compatibility conclusion.
 
-## 目录
+## Table of contents
 
-- 一页结论
-- API-01 · APIProxy 按运行平面迁到领域服务或 `ctx.remote` projection
-  - Host / Web Client 最小正确写法
+- One-page conclusion
+- API-01 · APIProxy migrates by runtime plane to domain services or the `ctx.remote` projection
+  - Minimal correct patterns for Host / Web Client
   - Web Client consumer ledger
   - Best practice
-  - 按 face 验证
-- API-02 · `RemoteResult` 版本边界与 alpha.2 `RemoteError`
-  - 先把版本归属说清楚
-  - Consumer 最新写法
-  - Remote owner 最新写法
+  - Verification by face
+- API-02 · `RemoteResult` version boundaries and the alpha.2 `RemoteError`
+  - Version attribution first
+  - Current consumer pattern
+  - Current Remote owner pattern
   - Best practice
-  - 验证
-- API-03 · Settings helper 移除与 provider-owned lifecycle
-  - 升级前
-  - 升级后
+  - Verification
+- API-03 · Settings helper removal and provider-owned lifecycle
+  - Before the upgrade
+  - After the upgrade
   - Best practice
-  - 验证
-- API-04 · 固定 Host facts 统一到 `ctx.remote.$host`
-  - alpha.2 写法
+  - Verification
+- API-04 · Fixed Host facts consolidated on `ctx.remote.$host`
+  - The alpha.2 pattern
   - Best practice
-  - 验证
-- API-05 · `SessionEvent.ignorable` 恢复了，但第三方写入面还没补齐
-  - 危险旧写法
+  - Verification
+- API-05 · `SessionEvent.ignorable` is restored, but the third-party write surface is still incomplete
+  - The dangerous legacy pattern
   - Best practice
-  - 验证
-- API-06 · Headless 的 argv 与进程输出契约
-  - 正确调用与解释
+  - Verification
+- API-06 · The Headless argv and process output contract
+  - Correct invocation and interpretation
   - Best practice
-  - 最小 stub 矩阵
-- API-07 · Package export 不等于发布物存在
+  - Minimal stub matrix
+- API-07 · Package export ≠ artifact presence
   - Best practice
-  - 验证
-- API-08 · `cordis.patch.yml` 是 composition，不是源码 patch
+  - Verification
+- API-08 · `cordis.patch.yml` is composition, not a source patch
   - Best practice
-  - 验证
-- API-09 · Plugin inventory 新增可选 `agentPresets`
+  - Verification
+- API-09 · Plugin inventory gains an optional `agentPresets`
   - Best practice
-  - 验证
-- API-10 · Web Client runtime 拆包、keyed chat snapshot 与命令附件参数
-  - 精确映射
-  - 类型组合与依赖所有权
-  - 验证
-- CFG-01 · Code Mode 精确迁到 PTC mode
-  - 精确 ledger
-- Skill 输出这类迁移报告时应使用的结构
-  - <接口名>
-- 最小验证梯度
+  - Verification
+- API-10 · Web Client runtime unbundling, keyed chat snapshots, and command attachment parameters
+  - Exact mapping
+  - Type composition and dependency ownership
+  - Verification
+- CFG-01 · Code Mode migrated exactly to PTC mode
+  - Exact ledger
+- Structure the skill should use for this kind of migration report
+  - <API name>
+- Minimal validation ladder
 
-## 一页结论
+## One-Page Conclusion
 
-| 接口面 | 旧写法 | 旧写法在目标版本的症状 | alpha.2 best practice |
+| API surface | Old pattern | Symptoms of the old pattern on the target version | alpha.2 best practice |
 |---|---|---|---|
-| Host APIProxy consumer | APIProxy / `executeRemote(...)` | `apiProxy` 消失；机械改成 `remote` 会永久 pending | 跳过 Client gateway，直接注入目标 tag 已确认的 owning domain service，例如 `llm` / `settings` |
-| Web Client APIProxy consumer | APIProxy / `executeRemote(...)` | 旧 package/service 消失；猜错 namespace 或方法会装配失败 | 使用生成的 `ctx.remote.<namespace>.<method>`，声明 `remote` 与具体 namespace 注入 |
-| Unary failure | 只写 `try/catch`；解析 message；`instanceof` | `ok: false` 被当成功；跨 bundle 漏判；错误码分支失效 | 先分支 `result.ok`，按 `result.error.code` 处理；只在 stream/显式抛出等 catch boundary 用 `isRemoteFailure` |
-| Failure classes | `TypertRemoteFailure` / `TypertLookupFailure` / `RemoteStreamError` | removed export 或 typecheck 失败；无域前缀 code 不再匹配 | owner 抛 `RemoteError('<domain>/<reason>', message, details)`；details 由 code 收窄 |
-| Settings namespace | `settingsNamespace('x')` | `TS2305` / “no exported member” | 直接使用符合文法的字符串字面量，例如 `const NS = 'my-plugin'` |
-| Settings lifecycle | 独立 `installSettingsSection(...)` | removed export；只改名字会丢 provider attach/detach 生命周期 | 在 `ctx.inject(['settings'], ...)` 内调用 `settingsCtx.settings.installSection(owner, ...)` |
-| Host facts | 注入 `connection` 并读 generation snapshot | 与 transport 生命周期耦合；alpha.2 已有正式入口 | 读 `ctx.remote.$host.home/isLoopback`；重连时响应 `connection/reset` |
-| SessionEvent | 看到 alpha.2 恢复 `ignorable` 就直接 `Session.append()` 自定义事件 | 写入现场成功，cold load 时因事件无 marker 被整条拒读 | alpha.2 只恢复 envelope 字段；公开 `Session.append()` 尚不能设置它，仓库外插件改用自有 sidecar/store |
-| Headless process | `dsh headless`、`-p`、JSONL stdout、stderr 非空即失败 | argv 不被接受、JSON parse 失败、成功任务被误报 | `dsh --profile headless "task"`；stdout 是最终文本，stderr 是 reasoning/诊断，以退出码为准 |
-| Package subpath | 看到 `exports["./src/*"]` 就直接导入 | 发布包可能根本不含 `src`，运行时报 module not found | 同时核对 exports、`files` 和实际 packed artifact；优先 `.` / `/client` 等稳定入口 |
-| `cordis.patch.yml` | 按文件名当源码 patch | 误报并生成错误迁移任务 | 先按官方 Profile composition overlay 处理；只有真实替换宿主源码时才归源码 patch |
-| Structured questions answerer | `userQuestions.registerProvider({ ask })` | attach 抛 `TypeError`；提问无人 answer（`NO_PROVIDER`） | `ctx.on('user-questions/request', (req, next) => answer)`；不带 agent 的 `ask()` 在服务自身 ctx 派发，同 fiber 树其他 entry 的监听者收不到（详见 [DSH-0.1.2-A1-20](v0.1.2-alpha.1.md)） |
-| Type export drift | `CallId` / `JsonValue` / `collectSessionTitleMessages` / `todo/write` 类型声明 | typecheck 批量 TS2305 / TS2614 | 按 ledger 迁移：`ToolCallId`（dsh-llm 根导出）、`@deepseek-ai/dsh-util-values`、本地同语义折叠、本地 event-map 合并（详见 [rollup R-07](rollup-0.1.2.md)） |
-| Web Client runtime | 从已删除的 `dsh-client-runtime/client` 导入类型并通过 `useSession` 读取平铺 `nodes[]` | 包不存在；selector 变 `any`；测试仍构造旧数组；Host 命令少一个参数 | 按 owning 包组合类型；用 `useChat` 读取 `order + nodes.get()`；Host `commands.execute` 无图片时显式传 `[]` |
+| Host APIProxy consumer | APIProxy / `executeRemote(...)` | `apiProxy` is gone; mechanically switching to `remote` hangs forever | Skip the Client gateway and directly inject the owning domain service confirmed at the target tag, e.g. `llm` / `settings` |
+| Web Client APIProxy consumer | APIProxy / `executeRemote(...)` | The old package/service is gone; guessing the namespace or method wrong fails assembly | Use the generated `ctx.remote.<namespace>.<method>` and declare `remote` plus the specific namespace injections |
+| Unary failure | Only `try/catch`; parse `message`; `instanceof` | `ok: false` treated as success; misses across bundles; error-code branches stop working | Branch on `result.ok` first, then handle by `result.error.code`; use `isRemoteFailure` only at catch boundaries such as streams/explicit throws |
+| Failure classes | `TypertRemoteFailure` / `TypertLookupFailure` / `RemoteStreamError` | Removed exports or typecheck failures; unprefixed codes no longer match | Owners throw `RemoteError('<domain>/<reason>', message, details)`; details narrow by code |
+| Settings namespace | `settingsNamespace('x')` | `TS2305` / “no exported member” | Use a grammar-conforming string literal directly, e.g. `const NS = 'my-plugin'` |
+| Settings lifecycle | Standalone `installSettingsSection(...)` | Removed export; renaming alone loses the provider attach/detach lifecycle | Call `settingsCtx.settings.installSection(owner, ...)` inside `ctx.inject(['settings'], ...)` |
+| Host facts | Inject `connection` and read the generation snapshot | Coupled to the transport lifecycle; alpha.2 already has a formal entry point | Read `ctx.remote.$host.home/isLoopback`; respond to `connection/reset` on reconnect |
+| SessionEvent | Seeing that alpha.2 restored `ignorable`, directly `Session.append()` custom events | Writes succeed live, but the whole session is refused on cold load because the events have no marker | alpha.2 only restores the envelope field; the public `Session.append()` cannot set it yet, so out-of-repo plugins switch to their own sidecar/store |
+| Headless process | `dsh headless`, `-p`, JSONL stdout, non-empty stderr means failure | argv not accepted, JSON parse fails, successful tasks misreported | `dsh --profile headless "task"`; stdout is the final text, stderr is reasoning/diagnostics, and the exit code is authoritative |
+| Package subpath | Seeing `exports["./src/*"]`, import directly | The published package may not contain `src` at all; runtime module not found | Check exports, `files`, and the actual packed artifact together; prefer stable entry points such as `.` / `/client` |
+| `cordis.patch.yml` | Treat by filename as a source patch | False positives that generate wrong migration tasks | Handle as the official Profile composition overlay first; classify as a source patch only when host source is really replaced |
+| Structured questions answerer | `userQuestions.registerProvider({ ask })` | attach throws `TypeError`; questions go unanswered (`NO_PROVIDER`) | `ctx.on('user-questions/request', (req, next) => answer)`; an `ask()` without an agent dispatches on the service's own ctx, and listeners on other entries of the same fiber tree do not receive it (see [DSH-0.1.2-A1-20](v0.1.2-alpha.1.md)) |
+| Type export drift | `CallId` / `JsonValue` / `collectSessionTitleMessages` / `todo/write` type declarations | typecheck fails in bulk with TS2305 / TS2614 | Migrate per the ledger: `ToolCallId` (dsh-llm root export), `@deepseek-ai/dsh-util-values`, local same-semantics folding, local event-map merging (see [rollup R-11](rollup-0.1.2.md)) |
+| Web Client runtime | Import types from the removed `dsh-client-runtime/client` and read the flat `nodes[]` via `useSession` | Package gone; selectors become `any`; tests still build the old array; Host commands are one argument short | Compose types per owning package; read via `useChat` with `order + nodes.get()`; Host `commands.execute` takes an explicit `[]` when there are no images |
 
-## API-01 · APIProxy 按运行平面迁到领域服务或 `ctx.remote` projection
+## API-01 · APIProxy migrates by runtime plane to domain services or the `ctx.remote` projection
 
-- **适用对象**：直接消费旧 APIProxy 的 Web Client、Host 集成或启动包装层。
-- **会怎么炸**：旧 APIProxy package/service 不再存在。Host 侧把 `apiProxy` 机械替换为
-  `remote` 会永久等待只存在于 Client face 的服务；Web Client 照搬设计笔记中的 wire route
-  又容易写出目标 tag 中不存在的属性，例如 `ctx.remote.sessionTitle.rename`。
-- **核心规则**：先判定运行平面。Host 插件跳过 Client gateway，直接注入旧调用背后的
-  owning domain service；Web Client 才使用目标 tag 生成的 consumer projection，不自己拼
-  `namespace/method` 字符串。alpha.2 的 Client API Remotes assembly 来自
-  `@deepseek-ai/dsh-api-remotes/client`。
+- **Applies to**: Web Client, Host integrations, or startup wrapper layers that consume the old APIProxy directly.
+- **How it breaks**: the old APIProxy package/service no longer exists. On the Host side, mechanically replacing `apiProxy` with `remote` waits forever on a service that only exists on the Client face; a Web Client that copies the wire route from the design notes is likely to write properties that do not exist at the target tag, such as `ctx.remote.sessionTitle.rename`.
+- **Core rule**: determine the runtime plane first. Host plugins skip the Client gateway and directly inject the owning domain service behind the old call; only the Web Client uses the consumer projection generated at the target tag, without assembling `namespace/method` strings itself. On alpha.2, the Client API Remotes assembly comes from `@deepseek-ai/dsh-api-remotes/client`.
 
-### Host / Web Client 最小正确写法
+### Minimal correct patterns for Host / Web Client
 
-Host 侧直接使用 owning domain service；下例的 `llm` / `listProviders()` 已有可执行契约，
-其他旧 APIProxy 调用必须按目标 tag 逐项确认，不能从 Client Remote 表反推：
+The Host side uses the owning domain service directly; in the example below, `llm` / `listProviders()` already has an executable contract, and every other legacy APIProxy call must be confirmed item by item against the target tag — do not reverse-engineer it from the Client Remote table:
 
 ```ts
 export const inject = ['llm']
@@ -108,7 +105,7 @@ export function listHostProviders(ctx) {
 }
 ```
 
-Web Client 侧使用生成 projection：
+The Web Client side uses the generated projection:
 
 ```ts
 import type { Context } from '@deepseek-ai/cordis'
@@ -127,100 +124,83 @@ export async function renameSession(
 }
 ```
 
-这里的实际路径是 `ctx.remote.session.rename(...)`；alpha.1 架构笔记中的
-`sessionTitle/rename` 是设计过程文本，不能凌驾于同一 tag 的实现、生成 projection 和
-consumer 测试。
+The actual path here is `ctx.remote.session.rename(...)`; `sessionTitle/rename` in the alpha.1 architecture notes is design-process text and cannot override the implementation, generated projection, and consumer tests at the same tag.
 
 ### Web Client consumer ledger
 
-下表只适用于 Web Client 的生成 projection。Host 调用必须针对目标 tag 逐项确认 owning
-domain service，不得从本表反推 Host service key 或方法。
+The table below applies only to the Web Client's generated projection. Host calls must confirm the owning domain service item by item against the target tag; do not derive Host service keys or methods from this table.
 
-| rc.2 / 历史 consumer 操作 | alpha.2 consumer projection | 迁移注意点 |
+| rc.2 / legacy consumer operation | alpha.2 consumer projection | Migration notes |
 |---|---|---|
-| `connection.api.sessions.rename({ sessionId, title })` | `ctx.remote.session.rename({ sessionId, title })` | 不存在 `ctx.remote.sessionTitle.rename` |
-| `ctx.remote.commands.list(sessionId)` | 路径不变 | rc.2 已是 Remote；consumer 传 Session id，Host scope 解析 Agent |
-| `ctx.remote.commands.execute(sessionId, line, images)` | 路径不变 | rc.2 已是 Remote；`images` 必传，无图传 `[]` |
-| `connection.api.llm.providers({})` | `ctx.remote.llm.listProviders()` 和 `.listConfigurableProviders()` | 两个调用各自返回 `RemoteResult`，按 provider id 组合 live 与 configurable directory |
-| `llm.discoverModels` | `ctx.remote.llm.discoverModels(settingsNs, request)` | 不写入 settings/credentials；返回候选模型 |
-| `llm.models` | `ctx.remote.session.modelCatalog()` | 从 LLM 域移到 Session 域 |
-| `credentials.describe` | `ctx.remote.credentials.describe(refs)` | 返回描述信息，不返回 secret 值 |
-| `credentials.set/unset` | `ctx.remote.credentials.set(ref, value)` / `.unset(ref)` | secret 只在写入方向过线 |
-| `settings.describe` | `ctx.remote.settings.describe()` | 返回脱敏 namespace view |
-| `settings.update/replace/mutate` | `.update(ns, patch, expectedRevision)` / `.replace(ns, section, expectedRevision)` / `.mutate(ns, ops, expectedRevision)` | 严格 positional；不用 CAS 也显式传 `undefined`，不要整对象覆盖未知字段 |
-| `settings.openDocument` | `ctx.remote.settings.openSettingsDocument(signal)` | native open capability 由 Host 拥有 |
-| `agentPreset.read` | `ctx.remote.agentPresets.read(id)` | consumer 方法名是 `read` |
-| `agentPreset.copy` | `ctx.remote.agentPresets.copy(from, id, name?)` | `name` 可选；成功值是 `void`，旧 APIProxy 返回的 preset id 不再存在 |
-| `connection.api.agentPresets.remove({ agentPreset: id })` | `ctx.remote.agentPresets.deletePreset(id)` | 精确更名为 `deletePreset`，参数也从对象改为字符串 |
-| `agentPreset.openDocument` | `ctx.remote.settings.openAgentPresetDirectory(id, signal)` | 移到 Settings 域 |
-| `subagent.interrupt` | `ctx.remote.subagents.interruptByParent(childId, parentId, 'continuable')` | 保留 durable parent authority |
-| `connection.api.workspace.list({})` | raw：`ctx.remote.workspace.follow(signal)` | 已变为 baseline/delta stream；普通 UI 优先消费 `ctx.workspaces` projection |
-| `workspace.insertSessionBefore` | `ctx.remote.workspace.insertSessionBefore(request)` | unary mutation，处理 `RemoteResult` |
-| `workspace.archiveSession` | `ctx.remote.workspace.archiveSession(request)` | unary mutation，处理 `RemoteResult` |
-| `connection.api.skills.list({ sessionId }, signal)` | `ctx.remote.skills.list({ sessionId }, signal)` | 读取 catalog，不激活 cold Agent |
-| `ctx.remote.fileReferences.list(sessionId, query, signal)` | 路径不变 | rc.2 已是 Remote；owner 移到 Session Controller adapter |
-| `connection.api.host.openPath({ path })` | `ctx.remote.session.openWorkspacePath({ path })` | path 先由 Session-aware client 做 workspace resolution |
-| `connection.hostDescription.getSnapshot()?.home` | `ctx.remote.$host.home` / `.isLoopback` | `$host` 是普通 facts getter，不是 unary RemoteResult |
-| `session.export` | `GET/HEAD /api/session.export` | 流式 Fetch route，不是 JSON Remote；仍受 browser session/Host/Origin 认证 |
+| `connection.api.sessions.rename({ sessionId, title })` | `ctx.remote.session.rename({ sessionId, title })` | `ctx.remote.sessionTitle.rename` does not exist |
+| `ctx.remote.commands.list(sessionId)` | Path unchanged | Already a Remote in rc.2; the consumer passes the Session id, and the Host scope resolves the Agent |
+| `ctx.remote.commands.execute(sessionId, line, images)` | Path unchanged | Already a Remote in rc.2; `images` is required — pass `[]` when there are no images |
+| `connection.api.llm.providers({})` | `ctx.remote.llm.listProviders()` and `.listConfigurableProviders()` | The two calls each return a `RemoteResult`; combine the live and configurable directories by provider id |
+| `llm.discoverModels` | `ctx.remote.llm.discoverModels(settingsNs, request)` | Does not write settings/credentials; returns candidate models |
+| `llm.models` | `ctx.remote.session.modelCatalog()` | Moved from the LLM domain to the Session domain |
+| `credentials.describe` | `ctx.remote.credentials.describe(refs)` | Returns description info, not secret values |
+| `credentials.set/unset` | `ctx.remote.credentials.set(ref, value)` / `.unset(ref)` | Secrets only cross the line in the write direction |
+| `settings.describe` | `ctx.remote.settings.describe()` | Returns a redacted namespace view |
+| `settings.update/replace/mutate` | `.update(ns, patch, expectedRevision)` / `.replace(ns, section, expectedRevision)` / `.mutate(ns, ops, expectedRevision)` | Strictly positional; pass `undefined` explicitly even without CAS; do not overwrite unknown fields with a whole-object replacement |
+| `settings.openDocument` | `ctx.remote.settings.openSettingsDocument(signal)` | The native open capability is owned by the Host |
+| `agentPreset.read` | `ctx.remote.agentPresets.read(id)` | The consumer method name is `read` |
+| `agentPreset.copy` | `ctx.remote.agentPresets.copy(from, id, name?)` | `name` is optional; the success value is `void` — the preset id the old APIProxy returned no longer exists |
+| `connection.api.agentPresets.remove({ agentPreset: id })` | `ctx.remote.agentPresets.deletePreset(id)` | Renamed exactly to `deletePreset`; the argument also changed from an object to a string |
+| `agentPreset.openDocument` | `ctx.remote.settings.openAgentPresetDirectory(id, signal)` | Moved to the Settings domain |
+| `subagent.interrupt` | `ctx.remote.subagents.interruptByParent(childId, parentId, 'continuable')` | Preserves durable parent authority |
+| `connection.api.workspace.list({})` | raw: `ctx.remote.workspace.follow(signal)` | Now a baseline/delta stream; ordinary UI should prefer the `ctx.workspaces` projection |
+| `workspace.insertSessionBefore` | `ctx.remote.workspace.insertSessionBefore(request)` | Unary mutation; handle the `RemoteResult` |
+| `workspace.archiveSession` | `ctx.remote.workspace.archiveSession(request)` | Unary mutation; handle the `RemoteResult` |
+| `connection.api.skills.list({ sessionId }, signal)` | `ctx.remote.skills.list({ sessionId }, signal)` | Reads the catalog without activating a cold Agent |
+| `ctx.remote.fileReferences.list(sessionId, query, signal)` | Path unchanged | Already a Remote in rc.2; the owner moved to the Session Controller adapter |
+| `connection.api.host.openPath({ path })` | `ctx.remote.session.openWorkspacePath({ path })` | The path is first resolved as a workspace by a Session-aware client |
+| `connection.hostDescription.getSnapshot()?.home` | `ctx.remote.$host.home` / `.isLoopback` | `$host` is a plain facts getter, not a unary RemoteResult |
+| `session.export` | `GET/HEAD /api/session.export` | A streaming Fetch route, not a JSON Remote; still subject to browser session/Host/Origin authentication |
 
 ### Best practice
 
-1. 先确认代码运行在哪个 face：Host、Web Client 还是普通 Cordis plugin。
-2. Host 直接注入 owning domain service，不声明只存在于 Client face 的 `remote`；也不要把
-   Host-only package 拉进 Client bundle。
-3. Client contribution 显式声明 `remote` 和实际使用的 `remote.<namespace>`；不要依赖
-   其他插件碰巧先挂载。
-4. 以目标 tag 的 package exports、`.d.ts`、实现和 consumer 测试为准；架构笔记只解释
-   意图，不是生成 API 的替代品。
-5. `workspace.follow` 等 stream 使用 owning package 已提供的 reconnect/snapshot adapter；
-   普通 UI 使用 `ctx.workspaces`，不要自行重写 generation baseline、mutation echo/race 或定时
-   `list()`。
+1. First confirm which face the code runs on: Host, Web Client, or an ordinary Cordis plugin.
+2. The Host directly injects the owning domain service and does not declare `remote`, which only exists on the Client face; do not pull Host-only packages into the Client bundle either.
+3. Client contributions explicitly declare `remote` and the `remote.<namespace>` actually used; do not rely on another plugin having mounted first.
+4. Defer to the target tag's package exports, `.d.ts`, implementation, and consumer tests; architecture notes only explain intent and are not a substitute for the generated API.
+5. For streams such as `workspace.follow`, use the reconnect/snapshot adapter the owning package already provides; ordinary UI uses `ctx.workspaces` and must not reimplement the generation baseline, mutation echo/race handling, or a timed `list()`.
 
-### 按 face 验证
+### Verification by face
 
-Host：
+Host:
 
-- 在固定目标 tag 的真实 Host profile 中验证 entry active、不等待 `remote`，并执行一次对应
-  领域方法；
-- `examples/face-contracts` 只证明注入与控制流边界，不证明 Loader 激活或真实服务装配。
+- In a real Host profile at the pinned target tag, verify the entry is active, does not wait for `remote`, and execute one corresponding domain method;
+- `examples/face-contracts` only proves the injection and control-flow boundary, not Loader activation or real service assembly.
 
-Web Client：
+Web Client:
 
-- typecheck 必须使用真实 `Context` 与生成 projection，不能用 `ctx: any` 掩盖错误路径；
-- 每个 unary 命中至少覆盖 `ok: true` 和一个领域错误码；支持 `AbortSignal` 的调用再覆盖取消；
-- 验证 Remote contribution 未挂载时会明确暴露装配错误，而不是永久 pending；
-- stream 覆盖 opening snapshot、增量、取消、carrier reconnect 与 teardown。
+- Typecheck must use the real `Context` and the generated projection; do not mask error paths with `ctx: any`;
+- Every unary hit covers at least `ok: true` and one domain error code; calls that support `AbortSignal` additionally cover cancellation;
+- Verify that an unmounted Remote contribution surfaces an explicit assembly error instead of hanging forever;
+- Streams cover the opening snapshot, deltas, cancellation, carrier reconnect, and teardown.
 
-- **来源**：
-  [alpha.2 SessionController 实际 Remote 方法](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/api/session-controller/src/index.ts) ·
+- **Source**:
+  [alpha.2 SessionController actual Remote methods](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/api/session-controller/src/index.ts) ·
   [alpha.2 API Remotes Client assembly](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/api/remotes/src/client/index.ts) ·
   [alpha.2 Workspace Remote owner](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/api/workspace-controller/src/index.ts) ·
-  [alpha.2 实际 rename consumer](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/api/session-controller/src/client/sessions/session.ts) ·
-  [本仓库 Host / Web Client face 契约](../examples/face-contracts/README.md)
+  [alpha.2 actual rename consumer](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/api/session-controller/src/client/sessions/session.ts) ·
+  [Host / Web Client face contracts in this repo](../examples/face-contracts/README.md)
 
-## API-02 · `RemoteResult` 版本边界与 alpha.2 `RemoteError`
+## API-02 · `RemoteResult` version boundaries and the alpha.2 `RemoteError`
 
-- **适用对象**：消费 `ctx.remote` 的 Client，以及定义/转发 Remote 的 Host plugin。
-- **会怎么炸**：
-  - 只靠 `catch` 处理业务失败，会把 `{ ok: false }` 当普通成功继续执行；
-  - alpha.1 owner-side wrapper/catch 若继续读取 `error.failure.code`，换成 alpha.2
-    `RemoteError` 后会读到 `undefined`；
-  - `instanceof RemoteError` 跨 bundle、worker 或 realm 会漏判；
-  - 导入 `TypertRemoteFailure`、`TypertLookupFailure` 或 `RemoteStreamError` 会 typecheck
-    失败；
-  - 继续匹配 `internal`、`cancelled`、`session-not-found` 等无域前缀旧 code，会落入
-    default 分支。
+- **Applies to**: Clients that consume `ctx.remote`, and Host plugins that define/forward Remotes.
+- **How it breaks**:
+  - Handling business failures only with `catch` treats `{ ok: false }` as an ordinary success and keeps going;
+  - An alpha.1 owner-side wrapper/catch that still reads `error.failure.code` gets `undefined` after switching to the alpha.2 `RemoteError`;
+  - `instanceof RemoteError` misses across bundles, workers, or realms;
+  - Importing `TypertRemoteFailure`, `TypertLookupFailure`, or `RemoteStreamError` fails typecheck;
+  - Continuing to match unprefixed legacy codes such as `internal`, `cancelled`, or `session-not-found` falls into the default branch.
 
-### 先把版本归属说清楚
+### Version attribution first
 
-`RemoteResult<T>` 在 alpha.1 已经存在：生成的 unary Remote 解析为
-`{ ok: true, value } | { ok: false, error }`。alpha.2 的 breaking change 是统一
-failure vocabulary：`RemoteFailure` 变成按 code 收窄的 `RemoteError` union，code 改为
-`<domain>/<reason>`，并删除旧 wrapper/stream error surface。不要把“开始处理 `result.ok`”
-误写成 alpha.2 才需要做的迁移。Unary consumer 在 alpha.1 就应读 `result.error.code`；变化的
-是 owner/catch 不再透过旧 wrapper 的 `.failure` 读取。
+`RemoteResult<T>` already existed in alpha.1: generated unary Remotes resolve to `{ ok: true, value } | { ok: false, error }`. The alpha.2 breaking change unifies the failure vocabulary: `RemoteFailure` becomes a `RemoteError` union narrowed by code, codes become `<domain>/<reason>`, and the old wrapper/stream error surface is removed. Do not write “start handling `result.ok`” as if it were an alpha.2-only migration. Unary consumers should already read `result.error.code` in alpha.1; what changed is that owners/catches no longer read through the old wrapper's `.failure`.
 
-### Consumer 最新写法
+### Current consumer pattern
 
 ```ts
 const result = await ctx.remote.session.rename({ sessionId, title })
@@ -246,12 +226,9 @@ if (!result.ok) {
 useRenamedSession(result.value)
 ```
 
-普通业务、carrier 与取消失败进入 `ok: false`。arity、未挂载 method、缺 Context adapter
-等装配或本地编程错误仍可能 reject；不要用一个宽泛 catch 把这些缺陷伪装成可重试业务
-错误。
+Ordinary business, carrier, and cancellation failures land in `ok: false`. Assembly or local programming errors — arity, an unmounted method, a missing Context adapter — can still reject; do not use a broad catch to dress those defects up as retryable business errors.
 
-Unary consumer 主动 `throw result.error` 后，或 stream 抛出 terminal Remote failure 时，外层
-catch boundary 使用结构 guard：
+When a unary consumer deliberately `throw`s `result.error`, or a stream throws a terminal Remote failure, the outer catch boundary uses a structural guard:
 
 ```ts
 import { isRemoteFailure } from '@deepseek-ai/dsh-api-gateway/client'
@@ -267,7 +244,7 @@ try {
 }
 ```
 
-### Remote owner 最新写法
+### Current Remote owner pattern
 
 ```ts
 import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
@@ -287,41 +264,33 @@ throw new RemoteError(
 
 ### Best practice
 
-1. 分支永远读 `code`，不要解析 `message`，不要依赖 class identity。
-2. code 的声明放在每个 producer 都能看到的最低公共 package；命名使用
-   `<domain>/<reason>`。
-3. `gateway/cancelled` 结束或传播取消；`gateway/internal` 和未知码保留原始诊断并上报，
-   默认不重试。
-4. 重试必须同时满足：错误码明确瞬态、操作幂等、用户策略允许。写操作不能因 transport
-   不确定性盲目重放。
-5. 测试 double 使用真实 `RemoteError`/`RemoteResult` 形状，不返回只有 message 的普通
-   object。`RemoteError` 是真实 `Error`，断言 code/details 时优先 `toMatchObject`，不要把它
-   当成旧的普通字面量对象做完全相等比较。
+1. Always branch on `code`; do not parse `message` and do not rely on class identity.
+2. Declare codes in the lowest common package visible to every producer; name them `<domain>/<reason>`.
+3. `gateway/cancelled` ends or propagates cancellation; `gateway/internal` and unknown codes keep the original diagnostics and report them, with no retry by default.
+4. Retry only when all three hold: the error code is explicitly transient, the operation is idempotent, and user policy allows it. Write operations must not be blindly replayed because of transport uncertainty.
+5. Test doubles use the real `RemoteError`/`RemoteResult` shapes and do not return plain objects with only a `message`. `RemoteError` is a real `Error`; when asserting code/details prefer `toMatchObject` — do not treat it as the old plain literal object and compare for exact equality.
 
-### 验证
+### Verification
 
-- Consumer：成功、领域失败、`gateway/cancelled`、`gateway/internal`、未知 code；
-- Owner：code/details 的 module augmentation 能正确收窄；
-- Boundary：显式抛出的 `result.error` 可被 `isRemoteFailure` 识别；普通 Error 原样抛出；
-- 跨 bundle/worker 测试不使用 `instanceof`。
+- Consumer: success, domain failure, `gateway/cancelled`, `gateway/internal`, unknown code;
+- Owner: module augmentation of code/details narrows correctly;
+- Boundary: an explicitly thrown `result.error` is recognized by `isRemoteFailure`; ordinary Errors pass through unchanged;
+- Cross-bundle/worker tests do not use `instanceof`.
 
-- **来源**：
-  [alpha.1 已有的 `RemoteResult<T>` 定义](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.1/packages/typert/protocol/src/types.ts) ·
-  [alpha.2 RemoteError vocabulary 决策](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/.agents/notes/implemented/architecture/2026-08-28-ctx-remote-failure-vocabulary.md) ·
-  [alpha.2 `RemoteError` 实现](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/typert/protocol/src/remote-error.ts)
+- **Source**:
+  [alpha.1 existing `RemoteResult<T>` definition](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.1/packages/typert/protocol/src/types.ts) ·
+  [alpha.2 RemoteError vocabulary decision](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/.agents/notes/implemented/architecture/2026-08-28-ctx-remote-failure-vocabulary.md) ·
+  [alpha.2 `RemoteError` implementation](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/typert/protocol/src/remote-error.ts)
 
-## API-03 · Settings helper 移除与 provider-owned lifecycle
+## API-03 · Settings helper removal and provider-owned lifecycle
 
-- **适用对象**：导入 `@deepseek-ai/dsh-settings` 的 Host/settings consumer plugin。
-- **会怎么炸**：
-  - `import { settingsNamespace } ...` 或 `import { installSettingsSection } ...` 报 removed
-    export；
-  - 把 `installSettingsSection(...)` 机械替换成同名 method、却不放在
-    `ctx.inject(['settings'], ...)` 内，会破坏 optional provider attach/detach；
-  - 从 `@deepseek-ai/dsh-settings` 继续导入 `deepEqualJson` 会失败，它已移到
-    `@deepseek-ai/dsh-util-values`。
+- **Applies to**: Host/settings consumer plugins that import `@deepseek-ai/dsh-settings`.
+- **How it breaks**:
+  - `import { settingsNamespace } ...` or `import { installSettingsSection } ...` reports a removed export;
+  - Mechanically replacing `installSettingsSection(...)` with the same-named method without placing it inside `ctx.inject(['settings'], ...)` breaks the optional provider attach/detach;
+  - Continuing to import `deepEqualJson` from `@deepseek-ai/dsh-settings` fails; it moved to `@deepseek-ai/dsh-util-values`.
 
-### 升级前
+### Before the upgrade
 
 ```ts
 import {
@@ -333,7 +302,7 @@ const NS = settingsNamespace('my-plugin')
 installSettingsSection(ctx, NS, Config, config, hooks)
 ```
 
-### 升级后
+### After the upgrade
 
 ```ts
 import type { Context } from '@deepseek-ai/cordis'
@@ -373,40 +342,36 @@ export function apply(ctx: Context, config: Config): void {
 
 ### Best practice
 
-1. namespace 使用小写字母开头，后续只含小写字母、数字和 `-`；字符串字面量在
-   TypeScript 层检查，动态字符串在运行时检查。
-2. 不要用 `as SettingsNamespace` 绕过 grammar；直接传 literal，保留推断。
-3. `owner` 传消费插件自己的 `ctx`，调用 method 的对象是当前 attached
-   `settingsCtx.settings`；两者不是同一个生命周期角色。
-4. `setSource` 保存当前 authoritative getter；provider detach 后 helper 会回退到
-   composition entry。`onChange` 只重建真正依赖配置的注册事实。
-5. 需要 JSON equality/value helpers 时从 owning util package 导入，不依赖 Settings
-   package 的历史顺带导出。
+1. Namespaces start with a lowercase letter and contain only lowercase letters, digits, and `-` after that; string literals are checked at the TypeScript layer, dynamic strings at runtime.
+2. Do not use `as SettingsNamespace` to bypass the grammar; pass a literal directly and keep the inference.
+3. Pass the consuming plugin's own `ctx` as `owner`; the object the method is called on is the currently attached `settingsCtx.settings`. The two are not the same lifecycle role.
+4. `setSource` saves the current authoritative getter; after the provider detaches, the helper falls back to the composition entry. `onChange` only rebuilds registration facts that genuinely depend on the config.
+5. For JSON equality/value helpers, import from the owning util package; do not rely on the Settings package's historical incidental re-exports.
 
-### 验证
+### Verification
 
-- typecheck 不再引用三个旧导出；
-- 合法 literal 注册成功，非法动态 namespace 抛 `TypeError`；
-- settings provider attach 时读取 resolved scope，detach 时回退 composition entry；
-- consumer 自身 unload 后不执行错误 fallback；disposer 和 watcher 不泄漏。
+- Typecheck no longer references the three removed exports;
+- A valid literal registers successfully; an invalid dynamic namespace throws `TypeError`;
+- On settings provider attach, read the resolved scope; on detach, fall back to the composition entry;
+- After the consumer itself unloads, no wrong fallback runs; disposers and watchers do not leak.
 
-- **来源**：
-  [alpha.1 Settings 入口](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.1/packages/settings/settings/src/index.ts) ·
-  [alpha.2 Settings 入口](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/settings/settings/src/index.ts) ·
-  [alpha.2 官方 Settings README](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/settings/settings/README.md)
+- **Source**:
+  [alpha.1 Settings entry point](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.1/packages/settings/settings/src/index.ts) ·
+  [alpha.2 Settings entry point](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/settings/settings/src/index.ts) ·
+  [alpha.2 official Settings README](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/settings/settings/README.md)
 
-> 兼容层不等于官方接口：DSH Desktop 当前可能通过本地 compatibility patch 暂时恢复
-> 这些 deprecated helper。插件在 Desktop checkout 内 typecheck/运行通过，不能证明它兼容
-> 未打补丁的官方 alpha.2；迁移与发布验证必须再使用纯官方 package artifact。
+> A compatibility layer is not the official interface: DSH Desktop may currently restore
+> these deprecated helpers temporarily through a local compatibility patch. A plugin that
+> typechecks/runs inside the Desktop checkout does not prove it is compatible with the
+> unpatched official alpha.2; migration and release verification must additionally use the
+> pure official package artifact.
 
-## API-04 · 固定 Host facts 统一到 `ctx.remote.$host`
+## API-04 · Fixed Host facts consolidated on `ctx.remote.$host`
 
-- **适用对象**：Web Client 中只为读取 Host home 或 loopback 状态而注入
-  `connection` 的插件。
-- **会怎么炸**：把 `$host` 反投影到 alpha.1 会 typecheck 失败；在 alpha.2 继续读取
-  generation store 虽可能工作，却让业务 package 依赖 carrier 内部生命周期。
+- **Applies to**: Plugins in the Web Client that inject `connection` only to read the Host home or loopback status.
+- **How it breaks**: back-projecting `$host` to alpha.1 fails typecheck; continuing to read the generation store on alpha.2 may work, but makes business packages depend on the carrier's internal lifecycle.
 
-### alpha.2 写法
+### The alpha.2 pattern
 
 ```ts
 import type { Context } from '@deepseek-ai/cordis'
@@ -429,33 +394,26 @@ export function apply(ctx: Context): void {
 
 ### Best practice
 
-- `$host` 是 identity-stable 的普通 getter，不是 store、没有 subscribe、也没有 generation
-  counter；不要轮询。
-- 需要在重连后重读时响应 `connection/reset`，或依赖 owning domain 自己的 invalidation。
-- alpha.1 compatibility branch 只能用 generation-ready snapshot；不要让 alpha.1 与
-  alpha.2 共用一个未经 feature detection/编译隔离的源文件。
+- `$host` is an identity-stable plain getter — not a store, no subscribe, no generation counter; do not poll it.
+- To re-read after a reconnect, respond to `connection/reset` or rely on the owning domain's own invalidation.
+- An alpha.1 compatibility branch may only use a generation-ready snapshot; do not share one source file between alpha.1 and alpha.2 without feature detection/compile-time isolation.
 
-### 验证
+### Verification
 
-- ready 前 `home === undefined`，ready 后为 Host home；
-- loopback 和 non-loopback carrier 的布尔值正确；
-- 重连只触发一次业务刷新，没有轮询 timer 或重复 listener。
+- Before ready, `home === undefined`; after ready, it is the Host home;
+- The booleans are correct for loopback and non-loopback carriers;
+- A reconnect triggers exactly one business refresh; no polling timer or duplicate listeners.
 
-- **来源**：
-  [alpha.2 Gateway Client `$host` 实现](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/api/gateway/src/client/index.ts) ·
-  [Remote failure vocabulary note 的 Fixed Host facts](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/.agents/notes/implemented/architecture/2026-08-28-ctx-remote-failure-vocabulary.md)
+- **Source**:
+  [alpha.2 Gateway Client `$host` implementation](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/api/gateway/src/client/index.ts) ·
+  [Fixed Host facts in the Remote failure vocabulary note](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/.agents/notes/implemented/architecture/2026-08-28-ctx-remote-failure-vocabulary.md)
 
-## API-05 · `SessionEvent.ignorable` 恢复了，但第三方写入面还没补齐
+## API-05 · `SessionEvent.ignorable` is restored, but the third-party write surface is still incomplete
 
-- **适用对象**：想通过 `SessionEventMap` augmentation + `Session.append()` 持久化插件状态，
-  或实现 persistence/reload/transport 的插件。
-- **会怎么炸**：alpha.2 虽恢复了 event envelope 上的 `ignorable?: true`，公开
-  `Session.append()` 的参数仍只有 `type`、`data`，以及仅 surface event 可用的
-  `SurfaceIntent`；它不会把 `ignorable` 写进事件。仓库外自定义 type 因而可能 live append
-  正常、持久化正常，却在下次 cold load 时抛 `SessionFormatUnsupportedError`，整条 Session
-  拒绝恢复。这是 silent write / loud read，不能靠一次 live smoke 发现。
+- **Applies to**: Plugins that want to persist plugin state via `SessionEventMap` augmentation + `Session.append()`, or that implement persistence/reload/transport.
+- **How it breaks**: alpha.2 restores `ignorable?: true` on the event envelope, but the public `Session.append()` still only accepts `type`, `data`, and `SurfaceIntent`, which is available to surface events only; it will not write `ignorable` into the event. So an out-of-repo custom type can live-append and persist fine, yet throw `SessionFormatUnsupportedError` on the next cold load, refusing to restore the whole Session. This is a silent write / loud read that one live smoke cannot catch.
 
-### 危险旧写法
+### The dangerous legacy pattern
 
 ```ts
 declare module '@deepseek-ai/dsh-session/types' {
@@ -468,228 +426,185 @@ declare module '@deepseek-ai/dsh-session/types' {
 session.append('my-plugin/state', { value: 'x' })
 ```
 
-`ignorable` 的 envelope 语义本身仍然有效：reader 遇到不认识的 type 时，只有该事件已经
-带 `ignorable: true` 才允许继续；字段缺失意味着 required。问题是 alpha.2 尚未给普通
-第三方 producer 提供受支持的 append/registration surface，不能通过 cast、解冻对象或手改
-JSONL 绕过去。
+The envelope semantics of `ignorable` itself are still in effect: when a reader meets an unknown type, it may continue only if that event already carries `ignorable: true`; a missing field means required. The problem is that alpha.2 does not yet offer ordinary third-party producers a supported append/registration surface, and it cannot be bypassed with casts, thawing objects, or hand-editing JSONL.
 
 ### Best practice
 
-1. 仓库外插件在 alpha.2 不要用自定义 `SessionEventMap` + `Session.append()` 持久化状态；
-   使用插件自有 sidecar/store，并按 Session id 关联。
-2. 能复用已有已知 event 时只复用真实相同的语义；不要把插件状态伪装成 model-visible 或
-   core event。
-3. `ignorable: true` 只适合“没有该插件的 reader 不解释此 type，仍能正确重建 Session”的
-   附加信息。插件存在时可以消费它；但它的缺席不能改变 core/durable Session 语义。
-4. persistence/transport owner 必须端到端保留已存在的 marker；未知且无 marker 的事件继续
-   fail closed。
-5. 只有上游提供受支持的 `append(..., { ignorable: true })`，或另一种能把 omission-safety
-   marker 持久化、且不依赖当前 composition 才能判定兼容性的正式机制后，才重新评估第三方
-   持久事件。仅注册 event name 不够；不要把字段恢复写成该能力已经交付。
+1. On alpha.2, out-of-repo plugins should not persist state with a custom `SessionEventMap` + `Session.append()`; use a plugin-owned sidecar/store keyed by Session id.
+2. When reusing an existing known event, reuse only its real, identical semantics; do not disguise plugin state as a model-visible or core event.
+3. `ignorable: true` fits only auxiliary information where a reader without that plugin does not interpret the type and can still rebuild the Session correctly. Consumers may use it when the plugin is present, but its absence must not change core/durable Session semantics.
+4. Persistence/transport owners must preserve existing markers end-to-end; unknown events without a marker keep failing closed.
+5. Re-evaluate third-party persistent events only after upstream ships a supported `append(..., { ignorable: true })` or another formal mechanism that persists the omission-safety marker and decides compatibility without depending on the current composition. Registering an event name alone is not enough; do not write up the field restoration as if that capability had shipped.
 
-### 验证
+### Verification
 
-- 对任何现有自定义 append 做真正的 persist → process restart/cold load 测试，不能只测 live
-  append；
-- alpha.2 仓库外插件若命中这一路径，应把 cold-load refusal 当成迁移阻断并撤掉该持久化
-  方案，而不是接受或吞掉错误；
-- persistence/transport owner 仍需覆盖“已有 marker 的未知 event 可读”和“无 marker 的未知
-  required event 明确拒绝”。
+- For any existing custom append, run a real persist → process restart/cold load test; do not test only live append;
+- If an out-of-repo plugin on alpha.2 hits this path, treat the cold-load refusal as a migration blocker and remove that persistence scheme rather than accepting or swallowing the error;
+- Persistence/transport owners still need to cover “unknown events with a marker are readable” and “unknown required events without a marker are explicitly refused”.
 
-- **来源**：
-  [alpha.2 `SessionEvent` 类型](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/core/session/src/types.ts) ·
-  [alpha.2 `Session.append()` 实现](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/core/session/src/index.ts) ·
+- **Source**:
+  [alpha.2 `SessionEvent` type](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/core/session/src/types.ts) ·
+  [alpha.2 `Session.append()` implementation](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/core/session/src/index.ts) ·
   [cold-load unknown event guard](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/session/session-persistence/src/coordinator.ts) ·
-  [恢复 ignorable 的实现决策](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/.agents/notes/implemented/architecture/2026-08-30-retain-ignorable-external-session-events.md)
+  [implementation decision restoring ignorable](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/.agents/notes/implemented/architecture/2026-08-30-retain-ignorable-external-session-events.md)
 
-## API-06 · Headless 的 argv 与进程输出契约
+## API-06 · The Headless argv and process output contract
 
-- **适用对象**：CLI wrapper、CI runner、subprocess bridge、stdout/stderr parser。
-- **会怎么炸**：
-  - `dsh headless ...`、`dsh --profile headless -p ...` 不是目标版本的命令形状；
-  - 对 stdout 做 `JSON.parse` 会在普通最终文本上失败；
-  - “stderr 非空即失败”会把含 reasoning 的成功执行误报为失败；
-  - 忽略退出码会把无完成回合或直接启动失败当成功。
+- **Applies to**: CLI wrappers, CI runners, subprocess bridges, stdout/stderr parsers.
+- **How it breaks**:
+  - `dsh headless ...` and `dsh --profile headless -p ...` are not command shapes of the target version;
+  - `JSON.parse` on stdout fails on ordinary final text;
+  - Treating any non-empty stderr as failure misreports successful runs that contain reasoning;
+  - Ignoring the exit code treats runs with no completed turn or direct startup failures as success.
 
-### 正确调用与解释
+### Correct invocation and interpretation
 
 ```sh
 dsh --profile headless "run the tests"
 ```
 
-Launcher flags 必须放在 task 之前；第一个非 launcher token 之后的内容属于 app/task：
+Launcher flags must come before the task; everything after the first non-launcher token belongs to the app/task:
 
 ```sh
 dsh --profile headless --patch ./plugin.patch.yml "verify the plugin"
 ```
 
-不要写成 `dsh --profile headless "verify the plugin" --patch ...`，否则 `--patch` 会进入 task
-文本，而不是 composition overlay。
+Do not write `dsh --profile headless "verify the plugin" --patch ...`; `--patch` would then go into the task text instead of being a composition overlay.
 
-| 通道 | alpha.2 契约 |
+| Channel | alpha.2 contract |
 |---|---|
-| stdout | 最终 assistant 文本；不是 JSONL，不含中间 tool output |
-| stderr | 非空 reasoning delta 以 `dsh: reasoning:` 开头；失败为 `dsh: <code>: <message>` |
-| exit 0 | task 完成 |
-| exit 1 | abort、error 或没有完成回合 |
+| stdout | Final assistant text; not JSONL, no intermediate tool output |
+| stderr | Non-empty reasoning deltas start with `dsh: reasoning:`; failures are `dsh: <code>: <message>` |
+| exit 0 | Task completed |
+| exit 1 | Abort, error, or no completed turn |
 
-另外，`SIGINT` 映射为 130；alpha.2 supervisor 将 `SIGTERM` 的普通停止映射为 0。调用方仍应
-记录终止 signal，不要只看 stderr 文本猜测状态。`--dump-config` 是不启动 app 的 composition
-检查，不能同时携带 task/app args。
+Also, `SIGINT` maps to 130; the alpha.2 supervisor maps an ordinary `SIGTERM` stop to 0. Callers should still record the termination signal instead of guessing the state from stderr text alone. `--dump-config` is a composition check that does not start the app and cannot carry task/app args.
 
 ### Best practice
 
-1. 使用 argv 数组和 `spawn`/`execFile`，不要 shell 拼接用户 task。
-2. 退出码是成功判据；stderr 是受控的 reasoning/诊断流。reasoning 可能敏感，明确日志
-   retention 与访问范围。
-3. 同时消费 stdout/stderr，处理取消、signal、spawn error 和 teardown；不要等进程结束后
-   才读取可能塞满的 pipe。
-4. 默认验证用 stub subprocess，不要求真实 API key 或模型调用。
+1. Use argv arrays with `spawn`/`execFile`; do not shell-concatenate a user task.
+2. The exit code is the success criterion; stderr is the controlled reasoning/diagnostic stream. Reasoning can be sensitive — state log retention and access scope explicitly.
+3. Consume stdout and stderr concurrently; handle cancellation, signals, spawn errors, and teardown. Do not wait for process exit before reading pipes that may fill up.
+4. Default verification uses a stub subprocess and does not require a real API key or model calls.
 
-### 最小 stub 矩阵
+### Minimal stub matrix
 
-| 场景 | stdout | stderr | exit | 预期 |
+| Scenario | stdout | stderr | exit | Expected |
 |---|---|---|---:|---|
-| 普通成功 | final text | empty | 0 | 成功 |
-| reasoning 成功 | final text | `dsh: reasoning: ...` | 0 | 成功，reasoning 单独展示/记录 |
-| task 失败 | empty 或换行 | `dsh: <code>: ...` | 1 | 失败 |
-| spawn error | none | local diagnostic | 无 | wrapper 报启动失败并 teardown |
+| Ordinary success | final text | empty | 0 | success |
+| Reasoning success | final text | `dsh: reasoning: ...` | 0 | success; reasoning shown/logged separately |
+| Task failure | empty or newline | `dsh: <code>: ...` | 1 | failure |
+| Spawn error | none | local diagnostic | none | wrapper reports startup failure and tears down |
 
-- **来源**：
+- **Source**:
   [alpha.2 Headless README](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/bundle/headless/README.md) ·
   [rc.2 Headless README](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.1-rc.2/packages/bundle/headless/README.md)
 
-## API-07 · Package export 不等于发布物存在
+## API-07 · Package export ≠ artifact presence
 
-- **适用对象**：从 `@deepseek-ai/*/src/*`、`/internal` 或其他深层 subpath 导入的插件。
-- **会怎么炸**：仅检查 source checkout 的 `package.json#exports`，可能认为路径公开可用；
-  但实际 registry tarball 不含目标文件，安装后出现 `ERR_MODULE_NOT_FOUND`、bundler
-  resolution failure 或缺少 `.d.ts`。
+- **Applies to**: Plugins that import from `@deepseek-ai/*/src/*`, `/internal`, or other deep subpaths.
+- **How it breaks**: checking only the source checkout's `package.json#exports` can make a path look publicly available, but the actual registry tarball does not contain the target file, so after installation you get `ERR_MODULE_NOT_FOUND`, a bundler resolution failure, or missing `.d.ts`.
 
-alpha.2 的 `@deepseek-ai/dsh-client-ui-conversation` 是一个典型风险信号：export map
-包含 `"./src/*": "./src/*"`，但 `files` 只列出 `lib/index.js`、`lib/invariant.js`、
-`lib/client.js` 与 `lib/types/**/*.d.ts`。因此“export map 里有”本身不能证明 registry
-artifact 可解析 raw source subpath。
+The alpha.2 `@deepseek-ai/dsh-client-ui-conversation` is a typical risk signal: its export map contains `"./src/*": "./src/*"`, but `files` lists only `lib/index.js`, `lib/invariant.js`, `lib/client.js`, and `lib/types/**/*.d.ts`. So “it is in the export map” by itself does not prove the registry artifact resolves a raw source subpath.
 
-| 断裂边界 | 典型症状 |
+| Break boundary | Typical symptom |
 |---|---|
-| 文件物理存在，但 subpath 未进入 `exports` | `ERR_PACKAGE_PATH_NOT_EXPORTED` |
-| `exports` 声明了 target，但 target 未进入 tarball | `ERR_MODULE_NOT_FOUND` |
-| runtime `.js` 存在，但对应 types target / `.d.ts` 缺失 | TypeScript 或 bundler type-resolution failure |
-| manifest 声明 `dsh.bundle.patch`，但 patch 未进入 tarball | 安装可被识别，Loader/dump 读取 overlay 时以缺文件失败 |
+| File physically exists, but the subpath is not in `exports` | `ERR_PACKAGE_PATH_NOT_EXPORTED` |
+| `exports` declares the target, but the target did not make it into the tarball | `ERR_MODULE_NOT_FOUND` |
+| Runtime `.js` exists, but the matching types target / `.d.ts` is missing | TypeScript or bundler type-resolution failure |
+| Manifest declares `dsh.bundle.patch`, but the patch did not make it into the tarball | The install is recognized, but the Loader/dump fails with a missing file when reading the overlay |
 
 ### Best practice
 
-1. 证据顺序：目标已安装/packed artifact → 目标 tag 的 exports 与声明类型 → 目标实现与
-   测试 → release notes/历史说明。
-2. 优先使用 `.`、`/client`、`/types`、`/remote` 等 package owner 明确维护的入口。
-3. 必须保留 raw source seam 时，固定精确目标版本，检查 pack file list，并把它视为高波动
-   coupling；不能因为带 `src` 就自动判私有，也不能因为 export map 存在就判可发布。
-4. typecheck 和 source checkout build 通过后，还要从实际 tarball/安装目录做一次 package
-   smoke。
+1. Evidence order: installed/packed artifact of the target → exports and declared types at the target tag → target implementation and tests → release notes/historical notes.
+2. Prefer entry points the package owner explicitly maintains, such as `.`, `/client`, `/types`, `/remote`.
+3. When a raw source seam must be kept, pin the exact target version, check the pack file list, and treat it as a high-volatility coupling; do not automatically call something private because it has `src`, nor publishable because an export map exists.
+4. After typecheck and a source-checkout build pass, also run one package smoke against the actual tarball/install directory.
 
-### 验证
+### Verification
 
-- 构建前检查 `package.json#exports` 与 `files`；
-- 用仓库既有包管理器生成 pack 清单（例如先审计构建需求，再运行
-  `npm pack --dry-run --json --ignore-scripts`）；未知 lifecycle script 未经授权不执行；
-- 从干净临时目录安装/解析实际 artifact，验证 runtime JS 与 `.d.ts` 均存在；
-- 若 manifest 声明 `dsh.bundle.patch`，逐项确认目标 patch 也在 pack 清单和 tarball 中；
-- 不在迁移中顺手把 package manager 或 lockfile 换掉。
+- Check `package.json#exports` and `files` before building;
+- Generate a pack manifest with the repository's existing package manager (for example, audit build requirements first, then run `npm pack --dry-run --json --ignore-scripts`); unknown lifecycle scripts are not executed without authorization;
+- Install/resolve the actual artifact from a clean temp directory and verify that both the runtime JS and `.d.ts` exist;
+- If the manifest declares `dsh.bundle.patch`, verify item by item that the target patch is also in the pack manifest and the tarball;
+- Do not switch the package manager or lockfile as a side effect of the migration.
 
-- **来源**：
+- **Source**:
   [alpha.2 ui-conversation package manifest](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/client/ui-conversation/package.json)
 
-## API-08 · `cordis.patch.yml` 是 composition，不是源码 patch
+## API-08 · `cordis.patch.yml` is composition, not a source patch
 
-- **适用对象**：扫描 `patch`、`patch.yml`、`cordis.patch.yml` 或 Loader row 的迁移工具。
-- **会怎么炸**：仅按文件名把正常 Profile composition 判为 monkey/source patch，随后要求
-  rebase 不存在的源码 hunk、删除有效 bundle row，或错误修改宿主源码。
+- **Applies to**: Migration tools that scan `patch`, `patch.yml`, `cordis.patch.yml`, or Loader rows.
+- **How it breaks**: judging a normal Profile composition as a monkey/source patch by filename alone leads to rebasing source hunks that do not exist, deleting valid bundle rows, or wrongly modifying host source.
 
 ### Best practice
 
-1. `cordis.patch.yml` 默认按 DSH Profile/Bundle 的官方 Loader composition overlay 分类。
-2. 只有出现真实 diff、`patch-package`/`patchedDependencies`、替换宿主实现、直接写发布
-   artifact 等证据时，才进入“源码 patch”迁移。
-3. composition 迁移核对 row、id、inject、config replacement 语义；源码 patch 迁移核对
-   target file、semantic marker、合成结果和行为测试。两者用不同验证路径。
-4. 作为 Bundle 发布时，manifest 的 `dsh.bundle.patch` 必须指向安全的包内相对路径，且该
-   `cordis.patch.yml` 必须真的进入 packed artifact；Node `exports` 不能替代这条边界。
-5. patch row 命中已有 `id` 时，`config` 是整个 replacement，不是 deep merge；后置 layer
-   覆盖前置 layer，因此要重写所有仍需保留的配置字段。
+1. Classify `cordis.patch.yml` by default as the official Loader composition overlay for a DSH Profile/Bundle.
+2. Only enter the “source patch” migration when there is evidence such as a real diff, `patch-package`/`patchedDependencies`, a replaced host implementation, or direct writes to published artifacts.
+3. Composition migrations check row, id, inject, and config-replacement semantics; source-patch migrations check the target file, semantic markers, the composed result, and behavior tests. The two use different verification paths.
+4. When publishing as a Bundle, the manifest's `dsh.bundle.patch` must point to a safe in-package relative path, and that `cordis.patch.yml` must actually make it into the packed artifact; Node `exports` cannot replace this boundary.
+5. When a patch row matches an existing `id`, `config` is the whole replacement, not a deep merge; later layers override earlier ones, so rewrite every config field that must be kept.
 
-alpha.2 的 composition 优先级从低到高是：
+On alpha.2, composition precedence, from lowest to highest, is:
 
-1. Profile manifest 的 `dsh.profile.bundles` 所列 bundle patches（按列表顺序）；
-2. `$DSH_HOME/profiles/<name>/cordis.patch.yml`；
-3. `$DSH_HOME/cordis.patch.yml`；
-4. CLI 中按 argv 顺序提供的 `--patch` overlays。
+1. Bundle patches listed in the Profile manifest's `dsh.profile.bundles` (in list order);
+2. `$DSH_HOME/profiles/<name>/cordis.patch.yml`;
+3. `$DSH_HOME/cordis.patch.yml`;
+4. `--patch` overlays given on the CLI in argv order.
 
-后层胜于前层。这解释了为什么迁移某个高层 row 时必须先看完整 composed result，而不能只看
-它自己的 YAML 片段。
+Later layers win over earlier ones. That is why migrating a high-level row requires looking at the full composed result first, not just its own YAML snippet.
 
-### 验证
+### Verification
 
-- 普通 `cordis.patch.yml` fixture 必须能被扫描器标成 public/negative control；
-- 真正的 `.patch`/source replacement 能被识别并分类为 clean apply、needs rebase、
-  upstreamed-remove 或 obsolete/conflicting；
-- `npm pack --dry-run --json --ignore-scripts` 或等价 no-scripts pack 清单确认 manifest 指向的
-  patch 实际存在；
-- 用隔离 Profile 执行 `dsh --profile <name> --dump-config`，核对 layer、row id/name、whole-config
-  replacement 与 unmatched-target diagnostics，不启动 GUI 或模型；
-- 不以命中数量决定风险。
+- An ordinary `cordis.patch.yml` fixture must be labeled a public/negative control by the scanner;
+- Real `.patch`/source replacements are recognized and classified as clean apply, needs rebase, upstreamed-remove, or obsolete/conflicting;
+- An `npm pack --dry-run --json --ignore-scripts` or equivalent no-scripts pack manifest confirms that the patch the manifest points to actually exists;
+- Run `dsh --profile <name> --dump-config` with an isolated Profile and check layers, row id/name, whole-config replacement, and unmatched-target diagnostics, without starting the GUI or a model;
+- Do not decide risk by hit count.
 
-- **来源**：
-  [alpha.2 Headless bundle 的 `cordis.patch.yml` 定位](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/bundle/headless/README.md) ·
-  [官方插件发布与 patch composition 文档](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/docs/user/develop/basic/publish.md) ·
+- **Source**:
+  [cordis.patch.yml placement in the alpha.2 Headless bundle](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/bundle/headless/README.md) ·
+  [official plugin publishing and patch composition docs](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/docs/user/develop/basic/publish.md) ·
   [alpha.2 CLI Profile/Bundle layer reference](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/apps/cli/reference/README.md)
 
-## API-09 · Plugin inventory 新增可选 `agentPresets`
+## API-09 · Plugin inventory gains an optional `agentPresets`
 
-- **适用对象**：消费 `pluginInventory/list`、序列化 `PluginInventorySnapshot`，或使用严格
-  closed schema 的 Client plugin。
-- **会怎么炸**：拒绝未知字段的 decoder 会在 alpha.2 收到 `agentPresets` 时失败；手工
-  重建整对象又可能静默丢掉该字段及未来扩展。
+- **Applies to**: Client plugins that consume `pluginInventory/list`, serialize `PluginInventorySnapshot`, or use a strict closed schema.
+- **How it breaks**: a decoder that rejects unknown fields fails when alpha.2 sends `agentPresets`; hand-rebuilding the whole object can silently drop that field and future extensions.
 
 ### Best practice
 
-- 把 `agentPresets` 当 optional 字段；缺失时保持旧 `entries` view。
-- 需要显示 preset 分组时再解析 `trust`、rows 与 `boolean | 'conditional'` enablement。
-- decoder 对新增字段前向兼容，业务写回只 patch 自己拥有的路径，不整对象覆盖。
+- Treat `agentPresets` as an optional field; when absent, keep the old `entries` view.
+- Only parse `trust`, rows, and `boolean | 'conditional'` enablement when preset grouping needs to be displayed.
+- Decoders stay forward-compatible with new fields; business writes back only patch the paths they own instead of overwriting the whole object.
 
-### 验证
+### Verification
 
-- 无 preset roster 时字段可缺失；
-- 多 preset、conditional row 能解析；
-- 旧 entries 行为不变，round-trip 不丢未知字段。
+- The field may be absent when there is no preset roster;
+- Multiple presets and conditional rows parse;
+- The old `entries` behavior is unchanged, and round-trips do not drop unknown fields.
 
-- **来源**：
-  [alpha.2 PluginInventorySnapshot 类型](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/host/plugin-inventory/src/types.ts)
+- **Source**:
+  [alpha.2 PluginInventorySnapshot type](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/host/plugin-inventory/src/types.ts)
 
-## API-10 · Web Client runtime 拆包、keyed chat snapshot 与命令附件参数
+## API-10 · Web Client runtime unbundling, keyed chat snapshots, and command attachment parameters
 
-- **适用对象**：仍依赖 `@deepseek-ai/dsh-client-runtime/client`、消费会话 transcript、扩展
-  chat command row，或直接调用 Host `ctx.commands.execute` 的插件源码仓。
-- **会怎么炸**：alpha.1 起 `dsh-client-runtime` 已删除。只把 `ClientContext` 改成 Cordis
-  `Context` 仍不够：合并到 Context 的 client facets 由各 owning 包提供；缺直接类型依赖时，
-  `skipLibCheck: true` 可能把 `useChat` selector 或回调参数悄悄传播成 `any`。alpha.2
-  `ChatSnapshot.nodes` 是 keyed store，不是旧 `ConversationNode[]`；Host 命令执行又在
-  `line` 与 `signal` 之间增加了 image attachments。
+- **Applies to**: Plugin source repositories that still depend on `@deepseek-ai/dsh-client-runtime/client`, consume session transcripts, extend chat command rows, or call the Host `ctx.commands.execute` directly.
+- **How it breaks**: `dsh-client-runtime` has been removed since alpha.1. Changing `ClientContext` to the Cordis `Context` alone is not enough: the client facets merged into Context come from their owning packages; without direct type dependencies, `skipLibCheck: true` can silently propagate `useChat` selectors or callback parameters to `any`. On alpha.2, `ChatSnapshot.nodes` is a keyed store, not the old `ConversationNode[]`; Host command execution also gained image attachments between `line` and `signal`.
 
-### 精确映射
+### Exact mapping
 
-| rc / runtime 聚合面 | alpha.2 owning 面 |
+| rc / runtime aggregation surface | alpha.2 owning surface |
 |---|---|
-| `ClientContext` | `Context` from `@deepseek-ai/cordis`，再按实际使用 import owning package 的 `type {}` augmentation |
+| `ClientContext` | `Context` from `@deepseek-ai/cordis`, plus `type {}` augmentations imported from owning packages per actual use |
 | `SessionId` | `@deepseek-ai/dsh-session/types` |
 | `ConversationNode` | `@deepseek-ai/dsh-client-ui-conversation/client` |
 | `CommandRowProps` | `@deepseek-ai/dsh-client-ui-chat/client` |
 | `useSession(session => session?.nodes)` | `useChat(chat => ...)` |
-| `ConversationSnapshot.nodes[]` | `ChatSnapshot.order` 保序遍历，逐 id 调 `snapshot.nodes.get(id)` |
-| `ctx.commands.execute(agent, line, signal)` | `ctx.commands.execute(agent, line, [], signal)`；有图时传真实 attachments |
+| `ConversationSnapshot.nodes[]` | Iterate `ChatSnapshot.order` in order, calling `snapshot.nodes.get(id)` per id |
+| `ctx.commands.execute(agent, line, signal)` | `ctx.commands.execute(agent, line, [], signal)`; pass real attachments when there are images |
 
-`snapshot.legacy.nodes` 只适合有明确双宿主需求的分阶段兼容，不应成为 alpha.2-only
-插件的新主数据面。alpha.2-only 的最小读取形态：
+`snapshot.legacy.nodes` is only for staged compatibility with an explicit dual-host requirement; it should not become the new primary data surface for alpha.2-only plugins. The minimal read shape for alpha.2-only:
 
 ```ts
 import type { Context } from '@deepseek-ai/cordis'
@@ -709,62 +624,49 @@ export function useOrderedNodes(ctx: Context) {
 }
 ```
 
-读取 assistant step 最终节点时，按 discriminant 收窄到 `type === 'assistant-step'` 后读取
-`data.finalNode`；不要在测试里用 `as unknown as ChatSnapshot` 掩盖旧数组夹具。
+To read an assistant step's final node, narrow by discriminant to `type === 'assistant-step'` and then read `data.finalNode`; do not mask old array fixtures in tests with `as unknown as ChatSnapshot`.
 
-### 类型组合与依赖所有权
+### Type composition and dependency ownership
 
-1. `dsh.client.inject` 只写运行时真正需要宿主注入的 client services；删掉已不存在的
-   `dsh-client-runtime`。
-2. 源码直接 import/消费的声明所有者必须是插件自己的 direct dev/peer dependency。发布包的
-   `devDependencies` 不会传递安装给 consumer；例如 ui-chat 的声明会引用
-   `dsh-client-store`、ui primitives、session/commands/conversation 等类型。
-3. 用 type-only import 激活 Context augmentation，并只补实际命中的 owning 包；不要靠旧
-   runtime 聚合包或偶然 hoist。
-4. 首次迁移至少跑一次 `tsc --skipLibCheck false`（或等价临时配置）定位缺失声明链，再恢复
-   仓库既有策略。任何新增 implicit `any` 都是迁移失败，不是可忽略 warning。
+1. List only the client services the runtime actually needs injected by the host in `dsh.client.inject`; remove the no-longer-existing `dsh-client-runtime`.
+2. The owner of any declaration the source directly imports/consumes must be the plugin's own direct dev/peer dependency. A published package's `devDependencies` are not transitively installed for consumers; for example, ui-chat's declarations reference types from `dsh-client-store`, ui primitives, session/commands/conversation, and so on.
+3. Activate Context augmentation with type-only imports and add only the owning packages actually hit; do not rely on the old runtime aggregation package or accidental hoisting.
+4. On first migration, run `tsc --skipLibCheck false` (or an equivalent temporary config) at least once to locate the missing declaration chain, then restore the repository's existing policy. Any newly introduced implicit `any` is a migration failure, not an ignorable warning.
 
-### 验证
+### Verification
 
-- lockfile 不含旧 cohort 或 `dsh-client-runtime`；所有 DSH packages 落在精确目标 cohort；
-- `skipLibCheck: false` 诊断无缺声明，正式 typecheck/build 通过且无新增 implicit `any`；
-- client tests 用真实 `ChatNodeStore` 形状（`order` + keyed `get`），覆盖缺失 id 和 assistant
-  final node；Host command test 断言第三参 images（无图为 `[]`）；
-- pack 后核对 tarball 名和 manifest 的插件自身版本，再在隔离 profile 做 Web token→Cookie、
-  boot entry、公告资源、注册/挂载、remove 全链路。
+- The lockfile contains no old cohort or `dsh-client-runtime`; all DSH packages land on the exact target cohort;
+- `skipLibCheck: false` diagnostics show no missing declarations; the formal typecheck/build passes with no new implicit `any`;
+- Client tests use the real `ChatNodeStore` shape (`order` + keyed `get`), covering missing ids and the assistant final node; the Host command test asserts the third-argument images (`[]` when there are none);
+- After packing, check the tarball name and the plugin's own version in the manifest, then run the full Web chain in an isolated profile: token→Cookie, boot entry, advertised resources, registration/mount, and remove.
 
-**来源**：[rc.2 runtime 聚合导出](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.1-rc.2/packages/client/runtime/src/client/index.ts) · [alpha.2 ChatSnapshot / ChatNodeStore](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/client/ui-chat/src/client/contract/snapshot.ts) · [alpha.2 `useChat` 与 `CommandRowProps`](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/client/ui-chat/src/client/contract/slots.ts) · [alpha.2 client slot 基础 Context augmentation](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/client/ui-slots/src/index.ts) · [alpha.2 Host commands `execute`](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/interaction/commands/src/index.ts) · [alpha.2 ui-chat package declarations](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/client/ui-chat/package.json)
+**Source**: [rc.2 runtime aggregation exports](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.1-rc.2/packages/client/runtime/src/client/index.ts) · [alpha.2 ChatSnapshot / ChatNodeStore](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/client/ui-chat/src/client/contract/snapshot.ts) · [alpha.2 `useChat` and `CommandRowProps`](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/client/ui-chat/src/client/contract/slots.ts) · [alpha.2 client slot base Context augmentation](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/client/ui-slots/src/index.ts) · [alpha.2 Host commands `execute`](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/interaction/commands/src/index.ts) · [alpha.2 ui-chat package declarations](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/client/ui-chat/package.json)
 
-## CFG-01 · Code Mode 精确迁到 PTC mode
+## CFG-01 · Code Mode migrated exactly to PTC mode
 
-- **适用对象**：读取 tool presentation mode、preset id、dispatch 类型或 prompt rule 的
-  插件/包装器。
-- **会怎么炸**：`tools.mode: 'code'`、preset `code`、`CodeDispatch*` 或
-  `tools:code-only` 不再匹配；全局替换 `code` 又会破坏 `run_code`、参数名与历史事件。
+- **Applies to**: Plugins/wrappers that read the tool presentation mode, preset id, dispatch type, or prompt rules.
+- **How it breaks**: `tools.mode: 'code'`, preset `code`, `CodeDispatch*`, or `tools:code-only` no longer match; a global replace of `code` would also break `run_code`, parameter names, and historical events.
 
-### 精确 ledger
+### Exact ledger
 
-| 旧值 | 新值 |
+| Old value | New value |
 |---|---|
 | `tools.mode: 'code'` | `tools.mode: 'ptc'` |
-| preset id/目录 `code` | `ptc` |
+| preset id/directory `code` | `ptc` |
 | `tools/code-dispatch-log` | `tools/ptc-dispatch-log` |
 | `CodeDispatch*` | `PtcDispatch*` |
 | `tools:code-only` | `tools:ptc-only` |
-| UI 文案 `Code Mode` | `PTC mode` / `PTC 模式` |
+| UI copy `Code Mode` | `PTC mode` / `PTC 模式` |
 
-保持不变：`run_code`、它的 `code` 参数、`CodeSdkLanguage`、`CodeRunFailedError`、
-`dsh-code-runtime*` package、持久事件 `tool/code-dispatch*`、`tools-code-mode` plugin name
-和 sub-call id 中的 `:code:`。
+Unchanged: `run_code`, its `code` parameter, `CodeSdkLanguage`, `CodeRunFailedError`, the `dsh-code-runtime*` packages, the persistent `tool/code-dispatch*` events, the `tools-code-mode` plugin name, and `:code:` in sub-call ids.
 
-- **验证**：目标配置接受新值；旧 Session 日志仍可加载；剩余旧词都能解释为明确保留，
-  没有盲目全局替换。
-- **来源**：
+- **Verification**: the target configuration accepts the new values; old Session logs still load; every remaining legacy token is explainable as an explicit keep, with no blind global replace.
+- **Source**:
   [alpha.1 PTC rename ledger](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.1/.agents/notes/implemented/architecture/2026-08-25-rename-code-mode-to-ptc.md)
 
-## Skill 输出这类迁移报告时应使用的结构
+## Structure the skill should use for this kind of migration report
 
-不要只输出“需要升级 API”。每个真实命中至少给出下列字段：
+Do not just output “the API needs upgrading”. For every real hit, provide at least the following fields:
 
 ```markdown
 ### <接口名>
@@ -778,26 +680,21 @@ export function useOrderedNodes(ctx: Context) {
 - 一手来源：<目标 tag 的 exports/type/source/test URL>
 ```
 
-最终汇总表：
+Final summary table:
 
-| 命中位置 | 旧接口 | 典型症状 | 目标接口 | 必须改 / 条件改 | 验证状态 |
+| Hit location | Old interface | Typical symptom | Target interface | Required / conditional change | Verification status |
 |---|---|---|---|---|---|
 |  |  |  |  |  |  |
 
-如果目标 tag 的实际类型与本文冲突，必须以目标 tag 为准并把冲突标为知识库缺口；不要
-为了“套卡片”而把可编译代码改坏。
+If the actual types at the target tag conflict with this document, the target tag wins and the conflict must be flagged as a knowledge-base gap; do not break compilable code just to “fit a card”.
 
-## 最小验证梯度
+## Minimal validation ladder
 
-1. **静态 inventory**：精确 package/resolved version、imports、exports、removed symbol、
-   Remote namespace 与 face；
-2. **typecheck/build**：使用真实 Context/projection，不用 `any`；
-3. **focused tests**：每个 unary 的 success/domain failure/cancel/assembly fault，stream 的
-   snapshot/reconnect/teardown；
-4. **artifact smoke**：从实际 pack/install 产物解析 entry 与 types；
-5. **headless-safe Loader/config smoke**：使用隔离 `DSH_HOME`/临时 Profile，不要求凭据；
-6. **显式授权后的行为验证**：只有用户要求并提供环境时，才启动真实 Profile、GUI、长期
-   服务或模型调用。
+1. **Static inventory**: exact package/resolved version, imports, exports, removed symbols, Remote namespaces, and face;
+2. **typecheck/build**: use the real Context/projection, not `any`;
+3. **Focused tests**: success/domain failure/cancel/assembly fault for each unary, and snapshot/reconnect/teardown for streams;
+4. **Artifact smoke**: resolve entries and types from the actual pack/install artifact;
+5. **Headless-safe Loader/config smoke**: use an isolated `DSH_HOME`/temporary Profile, no credentials required;
+6. **Behavior verification after explicit authorization**: start a real Profile, GUI, long-running service, or model calls only when the user asks and provides the environment.
 
-每次报告必须区分“typecheck 通过”“Loader 挂载通过”“真实行为通过”；三者不是同一个
-完成状态。
+Every report must distinguish “typecheck passed”, “Loader mount passed”, and “real behavior passed”; the three are not the same completion state.

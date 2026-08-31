@@ -1,37 +1,40 @@
-# references/ · 按需加载的参考材料
+# references/ · reference material loaded on demand
 
-> `SKILL.md` 只保留决策流程，版本事实与扫描模式放在这里按需加载。
+> `SKILL.md` keeps only the decision flow; version facts and scan patterns live here and load on demand.
 
-## 版本走廊索引
+## Version corridor index
 
-按表中 `from → to` 的有向边构造走廊，不要按文件名排序；`alpha.10` 的字典序会早于
-`alpha.2`。目标跨多版时先读完整走廊并计算最终净状态，再修改源码——例如字段在
-alpha.1 删除、alpha.2 恢复时，不应先删再加。
+Build corridors along the `from → to` directed edges in the table, never by filename
+order — lexicographically, `alpha.10` sorts before `alpha.2`. When the target spans
+multiple versions, read the full corridor and compute the final net state before touching
+source: if a field is removed in alpha.1 and restored in alpha.2, do not delete and re-add it.
 
-| 顺序 | 卡片文件 | from | to | 卡数 | 状态 / 覆盖 |
+| Order | Card file | from | to | Cards | Status / coverage |
 |---|---|---|---|---:|---|
 | 1 | [v0.1.1-rc.2.md](v0.1.1-rc.2.md) | `dsh-v0.1.1-rc.1` | `dsh-v0.1.1-rc.2` | 3 | reviewed / curated |
 | 2 | [v0.1.2-alpha.1.md](v0.1.2-alpha.1.md) | `dsh-v0.1.1-rc.2` | `dsh-v0.1.2-alpha.1` | 27 | reviewed / curated |
 | 3 | [v0.1.2-alpha.2.md](v0.1.2-alpha.2.md) | `dsh-v0.1.2-alpha.1` | `dsh-v0.1.2-alpha.2` | 8 | reviewed / curated |
-| — | [rollup-0.1.2.md](rollup-0.1.2.md) | `dsh-v0.1.1-rc.2` → `dsh-v0.1.2-alpha.2` 全走廊 | rollup | 非卡片文件：走廊层增量（跨 cohort 共存、未发布 cohort 安装、`RemoteResult` 错误流、迁移前 baseline 归因、boot race 有界重试、base-only preset 前置、类型面导出漂移、宿主自身安全边界、安装通道三坑、分层验证清单）；基于 alpha.2，正式版需复核 |
+| — | [rollup-0.1.2.md](rollup-0.1.2.md) | `dsh-v0.1.1-rc.2` → `dsh-v0.1.2-alpha.2` full corridor | rollup | non-card file: corridor-level increment (cross-cohort coexistence, unpublished-cohort installation, `RemoteResult` error flow, pre-migration baseline attribution, bounded retry for boot race, base-only preset precondition, type-surface export drift, host-self safety boundary, three install-channel pitfalls, layered validation checklist); based on alpha.2, subject to final-release review |
 
-`curated` 表示只收录已识别的插件相关变化，不表示完整 API diff。走廊缺边时停止
-自动迁移，向用户报告缺口；为当前任务做临时上游调研与给本仓库补卡是两件事，后者
-不应成为修改用户插件的隐式副作用。
+`curated` means only the identified plugin-relevant changes are included, not a complete
+API diff. When a corridor edge is missing, stop the automatic migration and report the gap
+to the user; one-off upstream research for the current task and adding cards to this
+repository are two different activities — the latter must not become an implicit side
+effect of modifying the user's plugin.
 
-配套材料：
+Companion material:
 
-- [pre-flight.md](pre-flight.md)：七类触点自查与迁移任务汇总；
-- [pre-flight-patterns.json](pre-flight-patterns.json)：可执行校验使用的正则真源；
-- [api-migration-0.1.2-alpha.2.md](api-migration-0.1.2-alpha.2.md)：rc.2→alpha.2 命中 API、Remote、Settings、事件、Headless、打包或 composition 接口时使用的精确迁移 ledger；
-- [host-plane-probes.md](host-plane-probes.md)：宿主平面在 `cordis.patch.yml` 里做双 cohort 探测的三种写法；
-- [migration-hygiene.md](migration-hygiene.md)：与版本无关的工具链坑（tsbuildinfo 假阳性、oxc 解析严格性、生效平面、pnpm 拦截、测试语法）；
-- [troubleshooting.md](troubleshooting.md)：迁移后症状 → 根因 → 卡片反查；
-- [examples/legacy-plugin/](../examples/legacy-plugin/)：七类触点静态夹具。
+- [pre-flight.md](pre-flight.md): the seven-class touchpoint self-check and the migration-task summary template;
+- [pre-flight-patterns.json](pre-flight-patterns.json): source of truth for the regexes used by executable checks;
+- [api-migration-0.1.2-alpha.2.md](api-migration-0.1.2-alpha.2.md): the precise migration ledger for rc.2→alpha.2 when API, Remote, Settings, events, Headless, packaging, or composition interfaces are hit;
+- [host-plane-probes.md](host-plane-probes.md): three ways for the host plane to run dual-cohort probes in `cordis.patch.yml`;
+- [migration-hygiene.md](migration-hygiene.md): version-independent toolchain pitfalls (tsbuildinfo false positives, oxc parsing strictness, the plane a change takes effect in, pnpm interception, test syntax);
+- [troubleshooting.md](troubleshooting.md): post-migration symptom → root cause → card lookup;
+- [examples/legacy-plugin/](../examples/legacy-plugin/): static fixture for the seven touchpoint classes.
 
-## 卡片文件元数据
+## Card file metadata
 
-每个 `vX.Y.Z-<suffix>.md` 以 frontmatter 声明：
+Each `vX.Y.Z-<suffix>.md` declares, in its frontmatter:
 
 ```yaml
 ---
@@ -47,28 +50,29 @@ verifiedAt: 2026-08-30
 ---
 ```
 
-版本顺序由 `from/to` 决定；`cardCount`、ID 前缀与必需字段由仓库校验脚本检查。
+Version order is determined by `from`/`to`; `cardCount`, the ID prefix, and the required
+fields are checked by the repository's validation scripts.
 
-## 单张卡片格式
+## Single-card format
 
 ```markdown
-### DSH-0.1.2-A2-01 · 标题
+### DSH-0.1.2-A2-01 · Title
 
-- **类型**: breaking | behavior | capability | fix | security | privacy
-- **适用对象**: client / server plugin / profile wrapper / packaging 等
-- **影响触点**: #1…#7，或“无（打包/隐私面）”
-- **操作级别**: required | required-if-hit | required-if-target-is-… | conditional | optional | informational
-- **症状**: 升级后什么会坏或变化
-- **迁移配方**: 可核对的步骤；旧→新 ledger（如适用）
-- **验证**: 如何证明最终行为，而不是只证明安装成功
-- **来源**: 固定 release tag / commit 的一手来源
-- **实战批注**（可选）: 可复现的真实迁移差异，注明日期、插件、平台与版本
+- **Type**: breaking | behavior | capability | fix | security | privacy
+- **Applies to**: client / server plugin / profile wrapper / packaging, etc.
+- **Touchpoints**: #1…#7, or "none (packaging/privacy surface)"
+- **Action level**: required | required-if-hit | required-if-target-is-… | conditional | optional | informational
+- **Symptoms**: what breaks or changes after the upgrade
+- **Migration recipe**: checkable steps; old→new ledger (where applicable)
+- **Verification**: how to prove the final behavior, not just that installation succeeded
+- **Source**: primary source pinned to a fixed release tag / commit
+- **Field note** (optional): reproducible real-world migration differences, noting date, plugin, platform, and version
 ```
 
-规则：
+Rules:
 
-1. ID 必须包含完整宿主版本并在仓库内唯一；
-2. 每张卡至少引用一条一手来源，同版本材料存在时优先钉在同一个 tag；
-3. release notes 只给出方向、没有 API 坐标时，配方必须要求再查目标 tag 类型，不能自造接口；
-4. 跨版本回滚/恢复用完整 ID 交叉引用；
-5. 本地观察与一手来源冲突时，先复现并并列记录差异，不静默覆盖任何一方。
+1. The ID must include the full host version and be unique within the repository;
+2. every card cites at least one primary source; when same-version material exists, prefer pinning to the same tag;
+3. when release notes give direction only, without API coordinates, the recipe must require re-checking the target tag's types — do not invent interfaces;
+4. cross-version rollbacks/restores are cross-referenced by full ID;
+5. when local observation conflicts with a primary source, reproduce first and record the difference side by side; never silently overwrite either side.

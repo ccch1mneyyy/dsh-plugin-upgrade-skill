@@ -1,65 +1,65 @@
-# Rollup · 0.1.1 → 0.1.2 走廊
+# Rollup · 0.1.1 → 0.1.2 Corridor
 
-> 状态: 基于 `dsh-v0.1.2-alpha.2`。0.1.2 正式版尚未发布——npm dist-tags 实测 `latest`/`next` = `0.1.1-rc.2`，`alpha` = `0.1.2-alpha.2`。正式发版后本文件需按 final tag 复核转正（[issue #1](https://github.com/oh-my-dsh/dsh-plugin-upgrade-skill/issues/1) 的原始 caveat）。
-> 定位: 本文件不重复版本卡片。逐条变更以卡片为准，这里只写走廊层的增量——跨 cohort 共存、未发布 cohort 安装、CI/发布连带、迁移前盘点与 baseline 归因、boot race 处置、安装通道三坑、类型面导出漂移、宿主自身安全边界、分层验证清单。
-> 卡片格式见 [README.md](README.md)。触点编号对应 [pre-flight 清单](pre-flight.md)。
+> Status: based on `dsh-v0.1.2-alpha.2`. The 0.1.2 final release is not out yet — measured on npm dist-tags, `latest`/`next` = `0.1.1-rc.2` and `alpha` = `0.1.2-alpha.2`. Once the final release ships, this file must be re-verified and promoted against the final tag (the original caveat in [issue #1](https://github.com/oh-my-dsh/dsh-plugin-upgrade-skill/issues/1)).
+> Scope: this file does not repeat the version cards. Each change is governed by its card; this file only covers corridor-level increments — cross-cohort coexistence, unpublished-cohort installation, CI/release coupling, pre-migration inventory and baseline attribution, boot-race handling, the three install-channel pitfalls, type-surface export drift, the host's own safety boundary, and the layered validation checklist.
+> Card format: see [README.md](README.md). Touchpoint numbers correspond to the [pre-flight checklist](pre-flight.md).
 
-## 目录
+## Table of contents
 
-- 怎么用这份 rollup
-- 卡片索引（按触点）
-- Remote 调用的错误流
-- 走廊层增量
-  - R-01 · 目标 cohort 的依赖包未完整发布 npm
-  - R-02 · 跨 cohort 共存（旧宿主升不到未发布 cohort）
-  - R-03 · 第三方预构建插件搭不上你的 shim
-  - R-04 · CI 与发布管线连带
-  - R-05 · 迁移前盘点被删包的下游
-  - R-06 · 迁移前 baseline 归因——先立豁免清单，再动迁移
-  - R-07 · 启动服务竞态：有界重试，不延迟、不加 inject wait
-  - R-08 · 安装通道三坑：镜像延迟、pnpm 11 供应链规则、peer 下限 prerelease 语义
-  - R-09 · 插件进 profile 的 `link:` 本地安装轨
-  - R-10 · base-only profile 挂 shipped preset 的新前置（Host scope 服务与同名遮蔽）
-  - R-11 · 0.1.2 类型面导出漂移（未入 release notes 的 ledger）
-  - R-12 · 升级对象可能就是当前运行宿主
-  - R-13 · 客户端产品文案迁到本地化 seat 后，按默认语言显示文本锚定宿主 UI 的插件会静默失效
-- 分层验证清单
-- 回退
-- 待确认
+- How to use this rollup
+- Card index (by touchpoint)
+- Remote call error flow
+- Corridor-level increments
+  - R-01 · Target cohort dependency packages not fully published to npm
+  - R-02 · Cross-cohort coexistence (old host cannot upgrade to an unpublished cohort)
+  - R-03 · Third-party prebuilt plugins don't fit your shim
+  - R-04 · CI and release pipeline coupling
+  - R-05 · Pre-migration inventory of removed-package consumers
+  - R-06 · Pre-migration baseline attribution — establish the exemption list first, then migrate
+  - R-07 · Service boot race: bounded retry — no delay, no inject wait
+  - R-08 · The three install-channel pitfalls: mirror lag, pnpm 11 supply-chain rules, peer-floor prerelease semantics
+  - R-09 · The `link:` local install track for adding a plugin to a profile
+  - R-10 · New precondition for mounting a shipped preset on a base-only profile (Host-scope services and same-name shadowing)
+  - R-11 · 0.1.2 type-surface export drift (ledger not in the release notes)
+  - R-12 · The upgrade target may be the currently running host
+  - R-13 · After client product copy moves to localized seats, plugins that anchor to host UI by displayed text fail silently
+- Layered validation checklist
+- Rollback
+- Pending confirmation
 
-## 怎么用这份 rollup
+## How to use this rollup
 
-0. 迁移动手前，先按 R-06 采集 baseline（即分层验证清单第 0 层）；
-1. 先按 [pre-flight.md](pre-flight.md) 测出命中的触点类；
-2. 按 `from → to` 读完整走廊并先计算净状态：[v0.1.2-alpha.1.md](v0.1.2-alpha.1.md) → [v0.1.2-alpha.2.md](v0.1.2-alpha.2.md)（各文件张数见 [README.md](README.md) 索引）；
-3. 回到本文件处理走廊层问题——这些跨越单版本，卡片里没有；
-4. 按本文件末尾的分层验证清单收工。
+0. Before starting the migration, collect the baseline per R-06 (i.e., layer 0 of the layered validation checklist);
+1. First run [pre-flight.md](pre-flight.md) to find the touchpoint classes you hit;
+2. Read the full corridor along `from → to` and compute the net state first: [v0.1.2-alpha.1.md](v0.1.2-alpha.1.md) → [v0.1.2-alpha.2.md](v0.1.2-alpha.2.md) (per-file card counts are in the [README.md](README.md) index);
+3. Return to this file for corridor-level problems — these span single versions and are not covered by the cards;
+4. Finish with the layered validation checklist at the end of this file.
 
-## 卡片索引（按触点）
+## Card index (by touchpoint)
 
-| 触点 | 相关卡片 |
+| Touchpoint | Related cards |
 |---|---|
-| #1 源码 patch | [DSH-0.1.2-A1-03](v0.1.2-alpha.1.md) |
-| #2 事件 / 持久事件 | [DSH-0.1.2-A1-02](v0.1.2-alpha.1.md) → [DSH-0.1.2-A2-01](v0.1.2-alpha.2.md)，另见 [DSH-0.1.2-A1-06](v0.1.2-alpha.1.md) |
-| #3 服务 / Remote | [DSH-0.1.2-A1-01](v0.1.2-alpha.1.md)、[DSH-0.1.2-A1-06](v0.1.2-alpha.1.md)、[DSH-0.1.2-A1-11](v0.1.2-alpha.1.md)、[DSH-0.1.2-A1-20](v0.1.2-alpha.1.md)、[DSH-0.1.2-A1-21](v0.1.2-alpha.1.md)、[DSH-0.1.2-A1-22](v0.1.2-alpha.1.md)、[DSH-0.1.2-A1-30](v0.1.2-alpha.1.md)、[DSH-0.1.2-A1-31](v0.1.2-alpha.1.md)、[DSH-0.1.2-A2-02](v0.1.2-alpha.2.md)、[DSH-0.1.2-A2-05](v0.1.2-alpha.2.md)、[DSH-0.1.2-A2-06](v0.1.2-alpha.2.md)、[DSH-0.1.2-A2-08](v0.1.2-alpha.2.md)、[DSH-0.1.2-A2-10](v0.1.2-alpha.2.md)、[DSH-0.1.2-A1-25](v0.1.2-alpha.1.md)、[DSH-0.1.2-A1-27](v0.1.2-alpha.1.md) |
-| #4 宿主目录读写 | [DSH-0.1.2-A1-04](v0.1.2-alpha.1.md)、[DSH-0.1.2-A1-13](v0.1.2-alpha.1.md)、[DSH-0.1.2-A1-21](v0.1.2-alpha.1.md) |
-| #5 UI / 命令 / 工具 | [DSH-0.1.2-A1-03](v0.1.2-alpha.1.md)、[DSH-0.1.2-A1-06](v0.1.2-alpha.1.md)、[DSH-0.1.2-A1-09](v0.1.2-alpha.1.md)、[DSH-0.1.2-A1-10](v0.1.2-alpha.1.md)、[DSH-0.1.2-A1-11](v0.1.2-alpha.1.md)、[DSH-0.1.2-A1-29](v0.1.2-alpha.1.md)、[DSH-0.1.2-A1-26](v0.1.2-alpha.1.md)、[DSH-0.1.2-A1-28](v0.1.2-alpha.1.md) |
-| #6 自建 HTTP/WS/RPC/DOM/CSS | [DSH-0.1.2-A1-08](v0.1.2-alpha.1.md)、[DSH-0.1.2-A1-28](v0.1.2-alpha.1.md) |
-| #7 子进程 / stdout / stderr | [DSH-0.1.2-A1-04](v0.1.2-alpha.1.md)、[DSH-0.1.2-A1-05](v0.1.2-alpha.1.md)、[DSH-0.1.2-A1-06](v0.1.2-alpha.1.md)、[DSH-0.1.2-A1-13](v0.1.2-alpha.1.md)、[DSH-0.1.2-A2-04](v0.1.2-alpha.2.md) |
-| #6/#7 Web 启动与验收 | [DSH-0.1.2-A1-19](v0.1.2-alpha.1.md)（认证 URL、启动图资源发现与真实挂载） |
-| 特殊面 | 权限 [DSH-0.1.2-A1-07](v0.1.2-alpha.1.md)；隐私 [DSH-0.1.2-A1-12](v0.1.2-alpha.1.md) / [DSH-0.1.2-A1-14](v0.1.2-alpha.1.md) / [DSH-0.1.2-A1-23](v0.1.2-alpha.1.md)；打包 [DSH-0.1.2-A1-24](v0.1.2-alpha.1.md) / [DSH-0.1.2-A2-03](v0.1.2-alpha.2.md) |
+| #1 source patches | [DSH-0.1.2-A1-03](v0.1.2-alpha.1.md) |
+| #2 events / persistent events | [DSH-0.1.2-A1-02](v0.1.2-alpha.1.md) → [DSH-0.1.2-A2-01](v0.1.2-alpha.2.md), also [DSH-0.1.2-A1-06](v0.1.2-alpha.1.md) |
+| #3 services / Remote | [DSH-0.1.2-A1-01](v0.1.2-alpha.1.md), [DSH-0.1.2-A1-06](v0.1.2-alpha.1.md), [DSH-0.1.2-A1-11](v0.1.2-alpha.1.md), [DSH-0.1.2-A1-20](v0.1.2-alpha.1.md), [DSH-0.1.2-A1-21](v0.1.2-alpha.1.md), [DSH-0.1.2-A1-22](v0.1.2-alpha.1.md), [DSH-0.1.2-A1-30](v0.1.2-alpha.1.md), [DSH-0.1.2-A1-31](v0.1.2-alpha.1.md), [DSH-0.1.2-A2-02](v0.1.2-alpha.2.md), [DSH-0.1.2-A2-05](v0.1.2-alpha.2.md), [DSH-0.1.2-A2-06](v0.1.2-alpha.2.md), [DSH-0.1.2-A2-08](v0.1.2-alpha.2.md), [DSH-0.1.2-A2-10](v0.1.2-alpha.2.md), [DSH-0.1.2-A1-25](v0.1.2-alpha.1.md), [DSH-0.1.2-A1-27](v0.1.2-alpha.1.md) |
+| #4 host directory read/write | [DSH-0.1.2-A1-04](v0.1.2-alpha.1.md), [DSH-0.1.2-A1-13](v0.1.2-alpha.1.md), [DSH-0.1.2-A1-21](v0.1.2-alpha.1.md) |
+| #5 UI / commands / tools | [DSH-0.1.2-A1-03](v0.1.2-alpha.1.md), [DSH-0.1.2-A1-06](v0.1.2-alpha.1.md), [DSH-0.1.2-A1-09](v0.1.2-alpha.1.md), [DSH-0.1.2-A1-10](v0.1.2-alpha.1.md), [DSH-0.1.2-A1-11](v0.1.2-alpha.1.md), [DSH-0.1.2-A1-29](v0.1.2-alpha.1.md), [DSH-0.1.2-A1-26](v0.1.2-alpha.1.md), [DSH-0.1.2-A1-28](v0.1.2-alpha.1.md) |
+| #6 custom HTTP/WS/RPC/DOM/CSS | [DSH-0.1.2-A1-08](v0.1.2-alpha.1.md), [DSH-0.1.2-A1-28](v0.1.2-alpha.1.md) |
+| #7 subprocess / stdout / stderr | [DSH-0.1.2-A1-04](v0.1.2-alpha.1.md), [DSH-0.1.2-A1-05](v0.1.2-alpha.1.md), [DSH-0.1.2-A1-06](v0.1.2-alpha.1.md), [DSH-0.1.2-A1-13](v0.1.2-alpha.1.md), [DSH-0.1.2-A2-04](v0.1.2-alpha.2.md) |
+| #6/#7 Web startup and acceptance | [DSH-0.1.2-A1-19](v0.1.2-alpha.1.md) (auth URL, boot resource discovery, and real mount) |
+| Special surfaces | permissions [DSH-0.1.2-A1-07](v0.1.2-alpha.1.md); privacy [DSH-0.1.2-A1-12](v0.1.2-alpha.1.md) / [DSH-0.1.2-A1-14](v0.1.2-alpha.1.md) / [DSH-0.1.2-A1-23](v0.1.2-alpha.1.md); packaging [DSH-0.1.2-A1-24](v0.1.2-alpha.1.md) / [DSH-0.1.2-A2-03](v0.1.2-alpha.2.md) |
 
-> 跨版本回滚型变更先读完整走廊再动手：字段或语义在中间版本删除、后续版本又恢复
-> （典型如 `ignorable` 的 [DSH-0.1.2-A1-02](v0.1.2-alpha.1.md) → [DSH-0.1.2-A2-01](v0.1.2-alpha.2.md) 一删一复）。
-> 迁移时必须先折叠走廊的净状态再修改源码——不要在 alpha.1 删一次、到 alpha.2 又加回来；
-> 若最终目标已恢复该语义，旧版适配里的防御代码应当删除而不是保留。
+> For cross-version revert-style changes, read the full corridor before touching anything: a field or its semantics may be removed in an intermediate version and restored in a later one
+> (the canonical example is `ignorable`, removed by [DSH-0.1.2-A1-02](v0.1.2-alpha.1.md) and restored by [DSH-0.1.2-A2-01](v0.1.2-alpha.2.md)).
+> When migrating, fold the corridor into its net state before modifying source — do not delete once for alpha.1 and then add it back for alpha.2;
+> if the final target restores that semantics, defensive code in old-version adaptations should be removed rather than kept.
 
-## Remote 调用的错误流
+## Remote call error flow
 
-承接 [DSH-0.1.2-A1-01](v0.1.2-alpha.1.md) 与
-[DSH-0.1.2-A2-02](v0.1.2-alpha.2.md)。unary Remote 从 rc.2 起就返回
-`Promise<RemoteResult<T>>`，alpha.2 改的是 `error` 的类型和错误码命名空间：业务/载体失败走 `ok: false`；参数个数、未挂载方法、缺少
-Context adapter 等装配/编程错误仍可能 reject，应暴露修复而不是吞掉重试。
+Follows on from [DSH-0.1.2-A1-01](v0.1.2-alpha.1.md) and
+[DSH-0.1.2-A2-02](v0.1.2-alpha.2.md). Unary Remote has returned
+`Promise<RemoteResult<T>>` since rc.2; what alpha.2 changes is the `error` type and the error-code namespace: business/transport failures surface as `ok: false`; assembly/programming errors — wrong argument count, unmounted methods, a missing
+Context adapter — can still reject, and should be exposed for fixing rather than swallowed and retried.
 
 ```typescript
 const result = await ctx.remote.session.list({ limit: 10 })
@@ -77,23 +77,23 @@ if (!result.ok) {
 return result.value
 ```
 
-只有上层接住主动 `throw result.error` 的值时，才用
-`isRemoteFailure`（`@deepseek-ai/dsh-api-gateway/client`）区分 Remote failure 与本地
-缺陷；本地缺陷继续抛出。禁止跨 realm 使用 `instanceof RemoteError`。`gateway/internal`
-和未知码不证明请求未执行，默认保留原始 `code/details` 并上报，不盲重试。
+Only when an upper layer catches the value from the explicit `throw result.error` should you use
+`isRemoteFailure` (from `@deepseek-ai/dsh-api-gateway/client`) to tell a Remote failure from a local
+defect; local defects keep propagating. Never use `instanceof RemoteError` across realms. `gateway/internal`
+and unknown codes do not prove the request never executed; by default keep the original `code`/`details` and report them — do not blind-retry.
 
-来源：[DSH-0.1.2-A2-02](v0.1.2-alpha.2.md) 与
-[ctx-remote-failure-vocabulary](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/.agents/notes/implemented/architecture/2026-08-28-ctx-remote-failure-vocabulary.md)。
+Source: [DSH-0.1.2-A2-02](v0.1.2-alpha.2.md) and
+[ctx-remote-failure-vocabulary](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/.agents/notes/implemented/architecture/2026-08-28-ctx-remote-failure-vocabulary.md).
 
-## 走廊层增量
+## Corridor-level increments
 
-以下问题跨越单个版本或落在卡片之外，来自社区实战（[discussion #5120](https://github.com/deepseek-ai/deepseek-harness/discussions/5120)，dsh-web 约 20 个包的迁移）与迁移管线实践。
+The following problems span single versions or fall outside the cards; they come from community practice ([discussion #5120](https://github.com/deepseek-ai/deepseek-harness/discussions/5120), the dsh-web migration of about 20 packages) and migration-pipeline experience.
 
-### R-01 · 目标 cohort 的依赖包未完整发布 npm
+### R-01 · Target cohort dependency packages not fully published to npm
 
-- **类型**: process
-- **症状**: 根包或 dist-tag 可用不代表插件直接依赖的每个内部 cohort 包都已发布；只有实际 registry 查询返回缺失时，才进入本配方。
-- **配方**: 先记录缺失的精确包名/版本。确认 registry 确实不可用后，在隔离 worktree 从官方 tag 构建并 `pnpm pack`，用 `overrides` 钉到 `file:` tarball；不要把所有 `0.1.2-alpha.*` 一概描述成 404。
+- **Type**: process
+- **Symptoms**: the root package or dist-tag being available does not mean every internal cohort package the plugin depends on directly has been published; enter this recipe only when an actual registry query reports a missing package.
+- **Migration recipe**: record the exact missing package names/versions first. After confirming the registry is truly unavailable, build from the official tag in an isolated worktree and run `pnpm pack`, pinning to `file:` tarballs via `overrides`; do not describe every `0.1.2-alpha.*` as 404 wholesale.
 
   ```sh
   git clone https://github.com/deepseek-ai/deepseek-harness.git /tmp/dsh-build
@@ -103,18 +103,18 @@ return result.value
   pnpm -r exec pnpm pack --pack-destination ~/.dsh-cohorts/0.1.2-alpha.2
   ```
 
-  manifest 里 range 写 `^0.1.2-alpha.2`，将来正式发布删掉 overrides 段即回到 registry 解析。
-- **注意（待确认）**: 以下 pnpm 版本钉点来自单一实战报告，尚未在其他仓库复现验证——报告称 `11.9.0` 对 file: tarball 的传递依赖在有第三方 peer 时会绕过 overrides 去 registry 找不存在的版本，钉 `packageManager: pnpm@11.24.0` 才解析正确。落地前先在目标仓库做最小复现确认，验证通过后回填结果并把本条目转正（与本文件末尾「待确认」小节同步更新）。
-- **npm 实况**（2026-08-31）: `@deepseek-ai/dsh-*` 各包在 npm 只有 `0.1.1-rc.1`、`0.1.1-rc.2`、`0.1.2-alpha.2`，alpha.1 从未发布。rc.2 → alpha.1 只能从 GitHub tag 构建；目标 alpha.2 先查 registry。
-- **只验证不安装**（[dsh-TUI #622](https://github.com/ccch1mneyyy/dsh-TUI/pull/622)）: 安装基线留 rc.2，CI 检出上游 tag，用其 `tsconfig.base.json` 的 `paths` 映射到源码跑 `tsc --noEmit`。证明类型面，运行时另做；[dsh-TUI #647](https://github.com/ccch1mneyyy/dsh-TUI/pull/647) 在 alpha.2 上 npm 后仍保留这条车道。
-- **验证**: `pnpm list --depth 0 | grep @deepseek-ai` 全部指向目标版本，无混合。
-- **来源**: [#5120](https://github.com/deepseek-ai/deepseek-harness/discussions/5120) 第 1 条。未在官方 release notes 覆盖范围内，属社区实践。
+  In the manifest, write the range as `^0.1.2-alpha.2`; once the final release ships, deleting the overrides section returns to registry resolution.
+- **Note (pending confirmation)**: the pnpm version pin below comes from a single field report and has not been reproduced in other repositories — the report says `11.9.0` bypasses overrides for file: tarball transitive dependencies when third-party peers are present, looking for nonexistent versions on the registry; pinning `packageManager: pnpm@11.24.0` resolves correctly. Before adopting it, run a minimal reproduction in the target repository; once verified, backfill the results and promote this entry (keep it in sync with the "Pending confirmation" section at the end of this file).
+- **npm reality** (2026-08-31): on npm, the `@deepseek-ai/dsh-*` packages only have `0.1.1-rc.1`, `0.1.1-rc.2`, and `0.1.2-alpha.2`; alpha.1 was never published. rc.2 → alpha.1 can only be built from a GitHub tag; for the alpha.2 target, query the registry first.
+- **Verify-only, no install** ([dsh-TUI #622](https://github.com/ccch1mneyyy/dsh-TUI/pull/622)): keep the install baseline at rc.2; CI checks out the upstream tag and runs `tsc --noEmit` with the `paths` mapping from its `tsconfig.base.json` pointing at the source. This proves the type surface; runtime is verified separately — [dsh-TUI #647](https://github.com/ccch1mneyyy/dsh-TUI/pull/647) kept this lane even after going npm on alpha.2.
+- **Verification**: `pnpm list --depth 0 | grep @deepseek-ai` all points at the target version, with no mixture.
+- **Source**: item 1 of [#5120](https://github.com/deepseek-ai/deepseek-harness/discussions/5120). Not covered by the official release notes; community practice.
 
-### R-02 · 跨 cohort 共存（旧宿主升不到未发布 cohort）
+### R-02 · Cross-cohort coexistence (old host cannot upgrade to an unpublished cohort)
 
-- **类型**: breaking（组合效应）
-- **症状**: rc.2 宿主不可能升到未发布的 alpha，插件必须在两个 cohort 上都跑。两条硬耦合会浮出来：客户端 bundle 求值期硬 `require` 平台模块，在没有该模块表项的宿主上报 `missed the module table`；只在新宿主注册的服务被写进硬 `inject` 清单，旧宿主上入口永久 `pending (waiting for service: …)`。
-- **配方**: 一个产物 + 运行时解析 cohort 表面。
+- **Type**: breaking (combined effect)
+- **Symptoms**: an rc.2 host cannot be upgraded to an unpublished alpha, so the plugin must run on both cohorts. Two hard couplings surface: a client bundle that hard-`require`s platform modules during evaluation reports `missed the module table` on hosts that have no module-table entry for them; services registered only on the new host get written into a hard `inject` list, leaving the entry permanently `pending (waiting for service: …)` on old hosts.
+- **Migration recipe**: one artifact + runtime resolution of the cohort surface.
 
   ```typescript
   // 共享 build 预设里生成 shim：不再 externalize 值导入，求值期用注入的 require 解析
@@ -126,9 +126,9 @@ return result.value
   }
   ```
 
-  只转共享的值表面——cohort 独有导出绝不能 re-export，否则新值导入会在 build 时报 missing-export 而不是静默坏掉。类型导入照旧（编译期擦除）。
+  Only forward the shared value surface — cohort-specific exports must never be re-exported, otherwise new value imports fail at build time with missing-export instead of breaking silently. Type imports stay as before (erased at compile time).
 
-  注入服务从硬 inject 清单拿掉，在使用点探测；cordis `remote` 代理对未注入属性是 throw 而非返回 undefined，所以必须 try/catch 再回落：
+  Take injected services out of the hard inject list and probe them at the use site; the cordis `remote` proxy throws for uninjected properties instead of returning undefined, so you must try/catch and fall back:
 
   ```typescript
   let presets
@@ -136,122 +136,118 @@ return result.value
   const roster = presets ?? ctx.connection.api.agentPresets
   ```
 
-- **宿主平面（Cordis 组合）的等价写法**: 产物不动，cohort 差异放进 `cordis.patch.yml` 的 `!!js` 探测——子路径 resolve、读 preset 文件、探测包目录三种形态和两条纪律见 [host-plane-probes.md](host-plane-probes.md)（[dsh-TUI #622](https://github.com/ccch1mneyyy/dsh-TUI/pull/622)）。
-- **被否决的替代**: per-consumer try/catch 重复污染源码；按宿主 cohort 出不同产物（重新引入有状态构建）；硬等 inject wait（旧宿主永久 pending）。
-- **验证**: 同一份产物分别 link 到旧宿主与新宿主，各跑一次冷启动 + 完整一轮对话。
-- **来源**: [#5120](https://github.com/deepseek-ai/deepseek-harness/discussions/5120) 第 3、4 条。
+- **Host-plane (Cordis composition) equivalent**: keep the artifact unchanged and put the cohort differences into `!!js` probes in `cordis.patch.yml` — the three forms (subpath resolve, reading preset files, probing package directories) and the two disciplines are in [host-plane-probes.md](host-plane-probes.md) ([dsh-TUI #622](https://github.com/ccch1mneyyy/dsh-TUI/pull/622)).
+- **Rejected alternatives**: per-consumer try/catch duplicated through the source; emitting different artifacts per host cohort (reintroduces stateful builds); hard-waiting on inject wait (old hosts pending forever).
+- **Verification**: link the same artifact to both an old host and a new host, and run one cold boot + one full conversation round on each.
+- **Source**: items 3 and 4 of [#5120](https://github.com/deepseek-ai/deepseek-harness/discussions/5120).
 
-### R-03 · 第三方预构建插件搭不上你的 shim
+### R-03 · Third-party prebuilt plugins don't fit your shim
 
-- **类型**: breaking
-- **症状**: 预构建 npm 内容进入 profile，硬 require 旧说明符，在新宿主同样 `missed the module table`。你不构建它，build 预设的 shim 帮不到。
-- **配方**: 仓库自持 `pnpm patch`（`patchedDependencies`），把那一条 require 改写成同样的双 cohort 探测。别忘了 profile 的父层链接——link 脚本可能把链接重指回未打补丁实例，需指到 `patch_hash=…` 实例。
-- **验证**: 打补丁后冷启动，确认该插件的 UI 贡献点可见可用。
-- **来源**: [#5120](https://github.com/deepseek-ai/deepseek-harness/discussions/5120) 第 7 条。
+- **Type**: breaking
+- **Symptoms**: prebuilt npm content enters the profile, hard-requires the old specifier, and hits `missed the module table` on the new host just the same. Since you don't build it, the build preset's shim can't help.
+- **Migration recipe**: keep `pnpm patch` (`patchedDependencies`) in the repository and rewrite that one require as the same dual-cohort probe. Don't forget the profile's parent-layer link — the link script may point the link back at the unpatched instance; it needs to point at the `patch_hash=…` instance.
+- **Verification**: cold boot after patching and confirm the plugin's UI contribution points are visible and usable.
+- **Source**: item 7 of [#5120](https://github.com/deepseek-ai/deepseek-harness/discussions/5120).
 
-### R-04 · CI 与发布管线连带
+### R-04 · CI and release pipeline coupling
 
-- **类型**: process
-- **症状**: overrides 用 file: tarball 后，frozen lockfile 记录机器相关绝对路径，每个 runner `pnpm install --frozen-lockfile` 缺 store。另外 cohort 未发布期间，版本 tag 一旦触发 npm publish，会发出 `@deepseek-ai/*` range 无法从 registry 解析的包，且对该版本不可逆。
-- **配方**:
-  - 加一个脚本在任何机器 materialize tarball store（解析 overrides；store 已存在则秒退），用以 `pnpm-workspace.yaml`（或 `package.json`）hash 为 key 的 actions cache 服务所有 pnpm 消费 job；
-  - `pnpm/action-setup` 删掉 `version` 输入，让 `packageManager` 成为唯一版本来源，避免与钉点冲突；
-  - release workflow 加 `NPM_PUBLISH_ENABLED` 开关：tag 仍跑全部门禁与 smoke，跳过 npm publish，直到 cohort 正式发布；
-  - **插件自身发版的 dist-tag**（实测 2026-08-30）: 适配 alpha cohort 的插件版本用 prerelease 号（如 `0.18.0-alpha.0`）发布到 npm **`alpha` dist-tag**，`latest` 留给 stable 宿主兼容线——否则 stable 宿主用户会被自动升级到 peer 不兼容的新版。可在 release workflow 里按版本号是否含 `-` 自动选 `--tag alpha|latest`；
-  - CI 挂载 lane 钉住与目标 cohort 一致的 dsh CLI 版本，scratch profile 引导时写 `minimumReleaseAgeExclude`（见 R-08），alpha 发布后首日的 CI 才不会因拒装新鲜包而挂。
-- **验证**: 干净 runner 上 `--frozen-lockfile` 安装成功；tag 演练确认未产生 publish。
-- **来源**: [#5120](https://github.com/deepseek-ai/deepseek-harness/discussions/5120) 第 8、9 条。
+- **Type**: process
+- **Symptoms**: once overrides point at file: tarballs, the frozen lockfile records machine-dependent absolute paths, and every runner's `pnpm install --frozen-lockfile` is missing the store. Also, while the cohort is unpublished, a version tag that triggers npm publish ships a package whose `@deepseek-ai/*` ranges cannot resolve from the registry — and that is irreversible for that version.
+- **Migration recipe**:
+  - Add a script that materializes the tarball store on any machine (resolves overrides; exits immediately if the store already exists), backing all pnpm-consuming jobs with an actions cache keyed by the `pnpm-workspace.yaml` (or `package.json`) hash;
+  - Drop the `version` input from `pnpm/action-setup` so `packageManager` becomes the single source of version, avoiding conflicts with the pin;
+  - Add an `NPM_PUBLISH_ENABLED` switch to the release workflow: tags still run all gates and smoke, but skip npm publish until the cohort ships officially;
+  - **dist-tag for the plugin's own releases** (measured 2026-08-30): publish plugin versions that adapt an alpha cohort under a prerelease number (e.g. `0.18.0-alpha.0`) to the npm **`alpha` dist-tag**, keeping `latest` for the stable-host compatibility line — otherwise stable-host users get auto-upgraded to a new version with incompatible peers. The release workflow can pick `--tag alpha|latest` automatically from whether the version contains `-`;
+  - CI mount lanes pin a dsh CLI version matching the target cohort, and write `minimumReleaseAgeExclude` when bootstrapping scratch profiles (see R-08), so CI on the first day after an alpha release does not fail by refusing to install fresh packages.
+- **Verification**: `--frozen-lockfile` install succeeds on a clean runner; a tag rehearsal confirms no publish is produced.
+- **Source**: items 8 and 9 of [#5120](https://github.com/deepseek-ai/deepseek-harness/discussions/5120).
 
-### R-05 · 迁移前盘点被删包的下游
+### R-05 · Pre-migration inventory of removed-package consumers
 
-- **类型**: process
-- **症状**: 依赖被删 SDK 包才能构建的插件（承接 [DSH-0.1.2-A1-01](v0.1.2-alpha.1.md)），迁移中途才发现无法构建，只能随迁移退役。
-- **配方**: 迁移前先对全部插件跑一次「import 了哪些被删包」的盘点，把「必须退役」与「可迁移」分开排期，而不是边迁边发现。
-- **被删包清单**（按各 tag `packages/*/*/package.json` 的 `name` 比对，2026-08-31）: rc.2 → alpha.1 删除 5 个：`@deepseek-ai/dsh-acp-demo`、`dsh-acp-snapshot`、`dsh-client-runtime`、`dsh-host-apiproxy`、`dsh-sdk-jsonrpc-demo`；新增 25 个。alpha.1 → alpha.2 无删除，新增 `dsh-client-ui-schedule`、`dsh-deque`、`dsh-util-time`、`dsh-util-values`。盘点先 grep 这 5 个名字。
-- **验证**: 盘点清单与实际迁移结果一致，无中途新增退役项。
-- **来源**: [#5120](https://github.com/deepseek-ai/deepseek-harness/discussions/5120) 第 10 条。
+- **Type**: process
+- **Symptoms**: a plugin that builds only because it depends on a removed SDK package (continuing from [DSH-0.1.2-A1-01](v0.1.2-alpha.1.md)) is discovered mid-migration to be unbuildable and can only be retired along with the migration.
+- **Migration recipe**: before migrating, run an inventory of "which removed packages are imported" across all plugins, and schedule "must retire" and "migratable" separately instead of discovering them mid-migration.
+- **List of removed packages** (compared by the `name` in each tag's `packages/*/*/package.json`, 2026-08-31): rc.2 → alpha.1 removes 5 — `@deepseek-ai/dsh-acp-demo`, `dsh-acp-snapshot`, `dsh-client-runtime`, `dsh-host-apiproxy`, `dsh-sdk-jsonrpc-demo` — and adds 25. alpha.1 → alpha.2 removes none and adds `dsh-client-ui-schedule`, `dsh-deque`, `dsh-util-time`, `dsh-util-values`. Start the inventory by grepping these 5 names.
+- **Verification**: the inventory matches the actual migration results, with no new retirement items discovered mid-way.
+- **Source**: item 10 of [#5120](https://github.com/deepseek-ai/deepseek-harness/discussions/5120).
 
-### R-06 · 迁移前 baseline 归因——先立豁免清单，再动迁移
+### R-06 · Pre-migration baseline attribution — establish the exemption list first, then migrate
 
-- **类型**: process
-- **症状**: 插件仓库在迁移前就存在失败（旧 cohort 上测试/typecheck 已挂）。迁移后跑
-  机械套件一片红，无法区分「迁移引入」与「本来就有」：顺手把预存失败修掉，会污染
-  迁移 diff、掩盖真实回归；不修不报，则会把预存失败误报为迁移破坏。两个方向都真实
-  发生过：干净树 + 红套件被当回归上报；脏树 + 绿门禁掩盖运行时断链（本文件分层验证
-  清单针对后者，本条针对前者）。
-- **配方**:
-  1. 在任何迁移写入之前，于仓库自身依赖状态（不 pin 目标 cohort、不设目标
-     env 变量）跑一次机械套件（build / typecheck / tests），记录失败清单与失败指纹
-     ——此即 baseline。同时固定环境证据：`HEAD`、工作树状态、lockfile 哈希、解析后
-     的依赖与工具版本、完整命令与退出码（时间戳只是辅助——迁移可能先改完才首次
-     提交，时间戳证不了先后）。
-  2. baseline 失败进入不修豁免清单：迁移过程绝不顺手修复预存失败——那是另一个
-     PR 的事。
-  3. 迁移后对比失败指纹（按命令、测试标识、规范化路径与诊断消息聚合；裸错误行只是
-     近似——移行与堆栈变化会引入噪声）：只有相对 baseline 新增的失败计入迁移
-     失败；测试清单不得无依据减少（删测试让集合缩小不算变绿）。
-  4. 修复循环（若进入）：每轮输入 = 差异报告 + 新增失败（不是全量日志）+ 历史修复
-     报告 + baseline 豁免清单；最小变更，新增失败清零即停——预存失败按定义出局。
-  5. 最终报告按 SKILL.md「验证与报告」的固定分栏输出：pre-existing 出自 baseline
-     （未触碰、不归因于本次迁移）；迁移引入的变化按触点逐项列入「已完成」；残留
-     宿主 patch 连同上游 issue/PR 链接列入「待确认/残留风险」（来源格式同
-     [README.md](README.md) 卡片规范）。
-- **验证**: baseline 采集于任何迁移写入之前（以记录的 `HEAD`/lockfile 哈希等环境
-  证据为准）；终局 diff 不含对 baseline 失败文件的顺手修复；报告能对每条失败回答
-  「迁移前是否已存在」。
-- **来源**: dsh-migrate-bot 无人值守管线的 pre-migration baseline 阶段（机械 pin →
-  A/B 审查 → 修复循环 → 补丁报告之上的本地扩展，专管失败归因；撰写时该阶段尚未
-  公开推送，公开后请复核此说明——见文末「待确认」）。[#5120](https://github.com/deepseek-ai/deepseek-harness/discussions/5120)
-  未覆盖此做法；互补关系：#5120 证明「静态门禁全绿 ≠ 运行时绿」，本条解决另一半
-  ——「静态红 ≠ 迁移的错」。
+- **Type**: process
+- **Symptoms**: the plugin repository already has failures before the migration (tests/typecheck already red on the old cohort). After the migration the
+   mechanical suite is all red, and you cannot tell "introduced by the migration" from "already there": fixing pre-existing failures along the way pollutes
+   the migration diff and masks real regressions; not fixing and not reporting misattributes pre-existing failures to the migration. Both directions have
+   actually happened: a clean tree with a red suite was reported as a regression; a dirty tree with green gates masked a runtime break (the layered validation
+   checklist in this file targets the latter; this entry targets the former).
+- **Migration recipe**:
+  1. Before any migration writes, run the mechanical suite (build / typecheck / tests) in the repository's own dependency state (no target-cohort pin, no target
+     env vars) and record the failure list and failure fingerprints — this is the baseline. Also pin down environment evidence: `HEAD`, working-tree state,
+     lockfile hash, resolved dependency and tool versions, full commands and exit codes (timestamps are only auxiliary — the migration may be fully edited
+     before its first commit, so timestamps cannot prove order).
+  2. Baseline failures go into a do-not-fix exemption list: never fix pre-existing failures along the way during the migration — that belongs in another PR.
+  3. After the migration, compare failure fingerprints (aggregated by command, test identifier, normalized path, and diagnostic message; bare error lines are
+     only an approximation — moved lines and stack changes introduce noise): only failures new relative to the baseline count as migration failures; the test
+     list must not shrink without justification (removing tests so the set gets smaller is not turning green).
+  4. Fix loop (if entered): each round's input = the diff report + newly added failures (not full logs) + the fix history + the baseline exemption list; make
+     minimal changes and stop as soon as new failures hit zero — pre-existing failures are out by definition.
+  5. The final report follows the fixed sections of "Validation and reporting" in SKILL.md: pre-existing comes from the baseline (untouched, not attributed to
+     this migration); migration-introduced changes are listed per touchpoint under "Completed"; residual host patches, together with upstream issue/PR links,
+     go under "Pending/residual risk" (source format per the card spec in [README.md](README.md)).
+- **Verification**: the baseline is collected before any migration writes (per the recorded environment evidence such as `HEAD`/lockfile hash); the final
+  diff contains no incidental fixes to baseline-failing files; the report can answer "did this failure already exist before the migration" for every failure.
+- **Source**: the pre-migration baseline stage of the dsh-migrate-bot unattended pipeline (a local extension on top of mechanical pin →
+  A/B review → fix loop → patch report, dedicated to failure attribution; that stage had not been pushed publicly at the time of writing — re-check this
+  description once it is public; see "Pending confirmation" at the end of this file). [#5120](https://github.com/deepseek-ai/deepseek-harness/discussions/5120)
+  does not cover this practice; they are complementary: #5120 proves "all-green static gates ≠ runtime green", and this entry solves the other half
+  — "static red ≠ the migration's fault".
 
-### R-07 · 启动服务竞态：有界重试，不延迟、不加 inject wait
+### R-07 · Service boot race: bounded retry — no delay, no inject wait
 
-- **类型**: process
-- **症状**: 插件启动即轮询依赖服务，与宿主服务就绪窗口竞态；冷启动出现
-  `service-unavailable` 循环。分层验证清单第 4 层要求观察此症状，但未给处置配方——
-  本条补齐。
-- **配方**: 仅限启动期轮询预期终将就绪的依赖服务、且被轮询操作只读幂等的场景：
-  对 `code: 'service-unavailable'` 做有界重试——约 5 次、2 秒退避，总次数与
-  总时长有上限，重试参数可注入覆盖（便于测试）；耗尽后明确失败并上报，不无限等待。
-  重试前提同 SKILL.md 安全边界：错误可重试、操作幂等、策略允许。若服务在该 cohort
-  上根本不存在（永久缺失而非未就绪），走 R-02 的运行时探测回落，不是重试。
-- **被否决的替代**: 盲目延迟首次轮询（掩盖竞态而非解决）；把服务加回 inject wait
-  （旧 cohort 上入口永久 `pending`，见 R-02）。
-- **验证**: 冷启动日志无 `service-unavailable` 循环；注入的重试策略在测试中生效。
-- **来源**: [#5120](https://github.com/deepseek-ai/deepseek-harness/discussions/5120)
-  第 6 条（dsh-web 迁移记录，boot race 处置；帖内提及决策笔记
-  `2026-08-28-task-board-roster-poll-boot-race.md`，未在仓库中定位到公开副本，故不附直链）。
-  配方出自原帖作者 zhu1090093659，此处仅按 rollup 格式收录并致谢。
+- **Type**: process
+- **Symptoms**: the plugin polls a dependent service immediately at startup and races the host's service-ready window; cold boot shows a
+  `service-unavailable` loop. Layer 4 of the layered validation checklist requires observing this symptom but gives no handling recipe —
+  this entry fills the gap.
+- **Migration recipe**: only for the scenario where startup polls a dependent service expected to become ready, and the polled operation is read-only and idempotent:
+  apply bounded retry to `code: 'service-unavailable'` — about 5 attempts with 2-second backoff, with caps on both total attempts and total duration, and retry
+  parameters overridable by injection (for testability); after exhaustion, fail explicitly and report instead of waiting forever. The retry preconditions are the
+  same as SKILL.md's safety boundaries: the error is retryable, the operation is idempotent, and policy allows. If the service does not exist on that cohort at all
+  (permanently missing, not not-ready), use R-02's runtime-probe fallback rather than retrying.
+- **Rejected alternatives**: blindly delaying the first poll (masks the race instead of solving it); putting the service back into inject wait
+  (entry permanently `pending` on old cohorts, see R-02).
+- **Verification**: no `service-unavailable` loop in the cold-boot logs; the injected retry policy takes effect in tests.
+- **Source**: [#5120](https://github.com/deepseek-ai/deepseek-harness/discussions/5120)
+  item 6 (dsh-web migration record, boot-race handling; the post mentions a decision note
+  `2026-08-28-task-board-roster-poll-boot-race.md`, for which no public copy was located in the repository, so no direct link is attached).
+  The recipe comes from the original post's author, zhu1090093659, recorded here in rollup format with thanks.
 
-### R-08 · 安装通道三坑：镜像延迟、pnpm 11 供应链规则、peer 下限 prerelease 语义
+### R-08 · The three install-channel pitfalls: mirror lag, pnpm 11 supply-chain rules, peer-floor prerelease semantics
 
-- **类型**: process
-- **症状**: cohort 包**已发布**（alpha.2 起，npm `alpha` dist-tag）仍装不上或装不干净，三种独立机制：
-  1. 第三方镜像（npmmirror 等）对新鲜 `@deepseek-ai/*` 发布（含传递依赖）同步滞后数小时以上，安装报 E404/ETARGET；
-  2. pnpm 11 默认的 `minimumReleaseAge`（24h 供应链规则）拒装发布不足一天的新包——alpha 发布当日跑 lane 必撞；另一触发面是旧 lockfile 钉着已从 registry 消失的版本（如 `@deepseek-ai/*@0.0.1-rc.1`）或 `link:` 本地包的依赖，报同类 404/拒装；
-  3. peer 下限写 `^0.1.0-rc.8` 这类旧 range 时，npm semver 的 prerelease 匹配规则（comparator 须同元组且带 prerelease）判定它**不匹配** `0.1.2-alpha.2`——安装期 peer 警告/拒装，且与宿主实际兼容与否无关。
-- **配方**:
-  - 镜像延迟：CLI 安装与 profile 内 pnpm 都显式走官方源 `export npm_config_registry=https://registry.npmjs.org`；
-  - 供应链规则：优先**按作用域豁免**而非全局关闭——消费方 workspace（仓库根**和** scratch/用户 profile 的 `pnpm-workspace.yaml`）加 `minimumReleaseAgeExclude: ['@deepseek-ai/*', <你的插件名>]`；旧 lockfile 钉已消失版本时删除 `pnpm-lock.yaml` 重建；`minimumReleaseAge: 0` 会整仓放行供应链保护，仅作最后手段；
-  - peer 下限：升 cohort 时显式改写为 `^0.1.2-alpha.2`（改写后安装期 `Issues with peer dependencies` 警告消失，可作为落位信号）。
-- **验证**: `pnpm list --depth 0 | grep @deepseek-ai` 全部指向目标版本；`npm view @deepseek-ai/dsh dist-tags` 确认目标版本所属 dist-tag 与安装通道一致；安装日志无 peer 警告。
-- **来源**: 实测（2026-08-30，dsh-better-sidebar [PR #472](https://github.com/omdsh-dev/DSH-better-sidebar/pull/472)：镜像 E404、alpha 发布当日 CI 依赖豁免跑通、peer 下限改写后警告消失）。**未在官方 release notes 覆盖范围内**，属社区实践。
+- **Type**: process
+- **Symptoms**: cohort packages **are published** (on the npm `alpha` dist-tag since alpha.2) yet still fail to install or install uncleanly, through three independent mechanisms:
+  1. Third-party mirrors (npmmirror and the like) lag fresh `@deepseek-ai/*` publications (transitive dependencies included) by hours or more, and installs report E404/ETARGET;
+  2. pnpm 11's default `minimumReleaseAge` (the 24h supply-chain rule) refuses packages released less than a day ago — running a lane on the day an alpha ships hits this for sure; another trigger is an old lockfile pinned to versions that have vanished from the registry (e.g. `@deepseek-ai/*@0.0.1-rc.1`) or dependencies on `link:` local packages, reporting the same kind of 404/refusal;
+  3. when the peer floor is written as an old range like `^0.1.0-rc.8`, npm semver's prerelease matching rules (the comparator must share the same tuple and carry a prerelease) judge it **not to match** `0.1.2-alpha.2` — install-time peer warning/refusal, regardless of actual host compatibility.
+- **Migration recipe**:
+  - Mirror lag: both CLI installs and pnpm inside profiles explicitly use the official registry via `export npm_config_registry=https://registry.npmjs.org`;
+  - Supply-chain rules: prefer **per-scope exemption** over globally disabling — the consuming workspace (the repository root **and** the `pnpm-workspace.yaml` of scratch/user profiles) adds `minimumReleaseAgeExclude: ['@deepseek-ai/*', <your plugin name>]`; when an old lockfile pins vanished versions, delete `pnpm-lock.yaml` and regenerate; `minimumReleaseAge: 0` relaxes supply-chain protection repo-wide and is a last resort only;
+  - Peer floor: when bumping cohorts, explicitly rewrite it to `^0.1.2-alpha.2` (after the rewrite, the install-time `Issues with peer dependencies` warning disappears and can serve as the landed signal).
+- **Verification**: `pnpm list --depth 0 | grep @deepseek-ai` all points at the target version; `npm view @deepseek-ai/dsh dist-tags` confirms the target version's dist-tag matches the install channel; the install log has no peer warnings.
+- **Source**: measured (2026-08-30, dsh-better-sidebar [PR #472](https://github.com/omdsh-dev/DSH-better-sidebar/pull/472): mirror E404, CI dependency exemption working on the day of the alpha release, warnings gone after the peer-floor rewrite). **Not covered by the official release notes**; community practice.
 
-### R-09 · 插件进 profile 的 `link:` 本地安装轨
+### R-09 · The `link:` local install track for adding a plugin to a profile
 
-- **类型**: process
-- **症状**: cohort 未发布 npm 时，[R-01](#r-01--目标-cohort-的依赖包未完整发布-npm) 解决的是插件仓库对 `@deepseek-ai/*` 的依赖；插件本体也要装进 profile 才能做 staging 验证，registry 安装同样不可用（镜像延迟、pnpm 供应链规则与 peer prerelease 语义等 registry 侧坑见安装通道三坑条目）。
-- **配方**: profile 级依赖用 `link:`：在 `profiles/<name>/package.json` 的 dependencies 写 `"<插件包名>": "link:<插件目录绝对路径>"`，`pnpm install` 生成 junction。配套两件事：装配行 `name` 用裸包名（[DSH-0.1.2-A1-26](v0.1.2-alpha.1.md)）；验证一律起独立 staging 实例（`dsh --profile <name> --port 30xx`，token 打在 stdout），不动生产实例。安装轨解析事实与 github 轨坑见 plugin-release skill 的 「profile 依赖管理配方」（#67）。
-- **验证**: junction 生成；`dsh --profile <name> --dump-config` 行名正确、无 pending；boot 图含插件；功能 e2e 通过。
-- **来源**: 社区实战（dsh-input-history 0.1.1 → 0.2.0 迁移，2026-08）；安装轨事实来自 plugin-release 的 profile 依赖管理配方（#67，2026-08-31 已合入）。
+- **Type**: process
+- **Symptoms**: when a cohort is not published to npm, [R-01](#r-01--target-cohort-dependency-packages-not-fully-published-to-npm) covers the plugin repository's dependencies on `@deepseek-ai/*`; the plugin itself also has to be installed into a profile for staging verification, and registry installation is equally unavailable (registry-side pitfalls — mirror lag, pnpm supply-chain rules, peer prerelease semantics — are covered in the install-channel-pitfalls entry).
+- **Migration recipe**: use `link:` for profile-level dependencies — write `"<plugin package name>": "link:<absolute path to the plugin directory>"` into the `dependencies` of `profiles/<name>/package.json`, and `pnpm install` creates a junction. Two things go with it: the composition row's `name` uses the bare package name ([DSH-0.1.2-A1-26](v0.1.2-alpha.1.md)); verification always starts a separate staging instance (`dsh --profile <name> --port 30xx`, with the token printed to stdout) and never touches the production instance. Install-track resolution facts and GitHub-track pitfalls are in the plugin-release skill's "profile dependency management recipe" (#67).
+- **Verification**: the junction is created; `dsh --profile <name> --dump-config` shows the correct row name with nothing pending; the boot graph includes the plugin; functional e2e passes.
+- **Source**: community practice (dsh-input-history 0.1.1 → 0.2.0 migration, 2026-08); the install-track facts come from plugin-release's profile dependency management recipe (#67, merged 2026-08-31).
 
-### R-10 · base-only profile 挂 shipped preset 的新前置（Host scope 服务与同名遮蔽）
+### R-10 · New precondition for mounting a shipped preset on a base-only profile (Host-scope services and same-name shadowing)
 
-- **类型**: behavior
-- **症状**: 仅组合 `dsh-base`（+ 自家 bundle）的 profile 上，挂 shipped `standard` preset 失败：`tool-subagent: modelSelectionSettings requires @deepseek-ai/dsh-tool-subagent/model-selection-settings in the Host scope`；用自定义 root 里同名空 preset 想遮蔽 shipped 时，遮蔽不生效——发现顺序 shipped 优先。
-- **配方**:
-  - Host composition（bundle 的 `cordis.patch.yml`）补一行 `@deepseek-ai/dsh-tool-subagent/model-selection-settings`（官方 web-app bundle 有此行，`dsh-base` 没有）：
+- **Type**: behavior
+- **Symptoms**: on a profile that composes only `dsh-base` (+ your own bundle), mounting the shipped `standard` preset fails: `tool-subagent: modelSelectionSettings requires @deepseek-ai/dsh-tool-subagent/model-selection-settings in the Host scope`; and when you try to shadow the shipped preset with a same-named empty preset in a custom root, the shadowing does not take effect — discovery order favors shipped.
+- **Migration recipe**:
+  - Host composition (the bundle's `cordis.patch.yml`) needs one more line, `@deepseek-ai/dsh-tool-subagent/model-selection-settings` (the official web-app bundle has this line, `dsh-base` does not):
 
     ```yaml
     - insert:
@@ -259,104 +255,104 @@ return result.value
           name: '@deepseek-ai/dsh-tool-subagent/model-selection-settings'
     ```
 
-  - 测试/受控面想用自己的同名 preset 时，agent-presets 配置加 `includeShippedRoot: false`，否则自定义 root 的同名行被 shipped 行遮蔽。
-- **验证**: base-only profile 冷启动无「启动默认预设未生效」警告且 `composedPreset` 返回 standard；`includeShippedRoot: false` 下自定义同名 preset 确实被挂载（而非 shipped 版本）。
-- **来源**: [alpha.2 discovery.ts 健康检查](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/preset/agent-presets/src/discovery.ts) · [alpha.2 standard preset 的 tool-subagent 行](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/preset/agent-presets/presets/standard/agent.cordis.yml) · [官方 web-app bundle 宿主行](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/bundle/web-app/cordis.patch.yml) · dsh-tui 实测（2026-08-30，cordis.patch.yml + preset-join composition 测试）
+  - When a test/controlled surface wants its own same-named preset, add `includeShippedRoot: false` to the agent-presets configuration; otherwise the same-named row in the custom root is shadowed by the shipped row.
+- **Verification**: a base-only profile cold-boots without the "startup default preset did not take effect" warning and `composedPreset` returns standard; with `includeShippedRoot: false` the custom same-named preset is what gets mounted (not the shipped version).
+- **Source**: [alpha.2 discovery.ts health check](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/preset/agent-presets/src/discovery.ts) · [the alpha.2 standard preset's tool-subagent row](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/preset/agent-presets/presets/standard/agent.cordis.yml) · [the official web-app bundle's host row](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/bundle/web-app/cordis.patch.yml) · dsh-tui measurement (2026-08-30, cordis.patch.yml + preset-join composition test)
 
-### R-11 · 0.1.2 类型面导出漂移（未入 release notes 的 ledger）
+### R-11 · 0.1.2 type-surface export drift (ledger not in the release notes)
 
-- **类型**: breaking（typecheck 面）
-- **症状**: rc.2 可直接导入的多个类型/函数在 alpha.2 移包或移出公开面，typecheck 批量 TS2305/TS2614；运行时不一定同步崩，属于「静态漂移」。
-- **配方**（ledger，2026-08-30 按 npm tarball 导出比对；2026-08-31 按三个 tag 源码补齐，每行标了发生在哪条边）:
+- **Type**: breaking (typecheck surface)
+- **Symptoms**: several types/functions directly importable in rc.2 move packages or leave the public surface by alpha.2, and typecheck fails in bulk with TS2305/TS2614; runtime does not necessarily break in sync — this is "static drift".
+- **Migration recipe** (ledger; exports compared from npm tarballs on 2026-08-30, completed against the source of the three tags on 2026-08-31; each row marks which edge it happens on):
 
-  | 旧 | 新 |
+  | Old | New |
   |---|---|
-  | `CallId` from `@deepseek-ai/dsh-llm`（rc.2 → alpha.1，`src/brand.ts:31`） | `ToolCallId`（同包根导出，branded） |
-  | `ClientContext` / `SessionId` / `ConversationNode` / `CommandRowProps` from 已删除的 `dsh-client-runtime/client`（rc.2 → alpha.1） | 分别迁到 Cordis `Context`、`@deepseek-ai/dsh-session/types`、`dsh-client-ui-conversation/client`、`dsh-client-ui-chat/client`；按 owning 包做 type-only augmentation，见 [API-10](api-migration-0.1.2-alpha.2.md#api-10--web-client-runtime-拆包keyed-chat-snapshot-与命令附件参数) |
-  | `useSession` 读取 `ConversationSnapshot.nodes[]`（rc.2 → alpha.1） | alpha.2 用 `useChat`，按 `ChatSnapshot.order` 保序并 `nodes.get(id)`；alpha.2-only 代码不以 `legacy.nodes` 为主数据面 |
-  | Host `ctx.commands.execute(agent, line, signal)`（rc.2 → alpha.1） | `ctx.commands.execute(agent, line, images, signal)`；无图片显式传 `[]` |
-  | `JsonValue`、`isJsonValue`、`snapshotJsonValue` from `@deepseek-ai/dsh-session`，以及 `dsh-tools` 对 `JsonValue` 的再导出（alpha.1 → alpha.2） | 新包 `@deepseek-ai/dsh-util-values`（补直接依赖，见 [DSH-0.1.2-A2-03](v0.1.2-alpha.2.md)） |
-  | `deepFreeze`、`assertNever` from `@deepseek-ai/dsh-llm`（alpha.1 → alpha.2） | `@deepseek-ai/dsh-util-values` |
-  | `collectSessionTitleMessages` from `@deepseek-ai/dsh-session-title`（alpha.1 → alpha.2，`src/index.ts:167` 转私有） | 移出公开面——按 rc.2 同语义本地折叠（首条 `source.kind === 'user'` 的 `user/message` 文本）或走 `foldSessionTitle` |
-  | `'todo/write'` 的 `SessionEventMap` 类型声明（rc.2 → alpha.1；rc.2 在 `core/session/src/invariant.ts:150` 直接 switch） | 只在 `@deepseek-ai/dsh-tool-todo` 内合并；不依赖该包时本地按官方 `TodoItem` 结构补 `declare module '@deepseek-ai/dsh-session/types'`（runtime 事件词汇未变，`known-event-types` 仍收录） |
-  | `settingsNamespace()`、`installSettingsSection()`、`deepEqualJson()` from `@deepseek-ai/dsh-settings`（alpha.1 → alpha.2） | 全部删除。命名空间改普通字符串字面量，`SettingsProvider.register<const Namespace extends string, T>(ns: Namespace & SettingsNamespaceInput<Namespace>, …)` 编译期校验（`src/index.ts:419`）；`installSettingsSection` → `SettingsProvider.installSection(owner, ns, schema, entry, hooks)`；`deepEqualJson` → `dsh-util-values`。要一份源码同时编译过 alpha.1 和 alpha.2，把常量写成 `'my-ns' as SettingsNamespace`——brand 只在类型层，运行时值相同 |
-  | `InvalidPresetIdError`、`PresetExistsError`、`PresetNotWritableError`、`PresetLockedError`、`PresetMountError`、`UnknownPresetError`、`AgentPresetError`、`AgentPresetErrorDetailsMap` from `@deepseek-ai/dsh-agent-presets`（alpha.1 → alpha.2） | 删除，改 `RemoteError<'agent-preset/not-found' \| 'agent-preset/invalid' \| 'agent-preset/read-only' \| 'agent-preset/locked'>`（`src/types.ts:37-43`）；`instanceof XxxError` 改按 `code` 分支，见 [DSH-0.1.2-A2-02](v0.1.2-alpha.2.md) |
-  | `LlmModelDiscoveryError` from `@deepseek-ai/dsh-llm`（code `model-discovery-failed`；alpha.1 → alpha.2） | `RemoteError<'llm/model-discovery-rejected'>`（`src/types.ts:261`） |
-  | `FIRST_PARTY_SECTION_ORDER`、`PERSONA_ORDER` from `@deepseek-ai/dsh-system-prompt`（alpha.1 → alpha.2） | 删除，改 `systemPrompt.getSectionOrder(name)` / `getContextOrder(name)`（参数类型 `PromptSectionOrderName` / `PromptContextOrderName`） |
-  | `TypertRemoteFailure`、`TypertLookupFailure` from `@deepseek-ai/dsh-typert-protocol`；`RemoteStreamError` from `@deepseek-ai/dsh-api-gateway/client`；`RpcErrorDetailsMap`、`RpcErrorCode`、`RpcError` from `@deepseek-ai/dsh-client-connection`（alpha.1 → alpha.2） | 删除，统一 `RemoteError`，见 [DSH-0.1.2-A2-02](v0.1.2-alpha.2.md) |
+  | `CallId` from `@deepseek-ai/dsh-llm` (rc.2 → alpha.1, `src/brand.ts:31`) | `ToolCallId` (same package, root export, branded) |
+  | `ClientContext` / `SessionId` / `ConversationNode` / `CommandRowProps` from the removed `dsh-client-runtime/client` (rc.2 → alpha.1) | moved to Cordis `Context`, `@deepseek-ai/dsh-session/types`, `dsh-client-ui-conversation/client`, and `dsh-client-ui-chat/client` respectively; do type-only augmentation per owning package — see [API-10](api-migration-0.1.2-alpha.2.md#api-10--web-client-runtime-unbundling-keyed-chat-snapshots-and-command-attachment-parameters) |
+  | `useSession` reading `ConversationSnapshot.nodes[]` (rc.2 → alpha.1) | on alpha.2 use `useChat`, keeping order via `ChatSnapshot.order` with `nodes.get(id)`; alpha.2-only code must not treat `legacy.nodes` as the primary data surface |
+  | Host `ctx.commands.execute(agent, line, signal)` (rc.2 → alpha.1) | `ctx.commands.execute(agent, line, images, signal)`; pass `[]` explicitly when there are no images |
+  | `JsonValue`, `isJsonValue`, `snapshotJsonValue` from `@deepseek-ai/dsh-session`, plus `dsh-tools`' re-export of `JsonValue` (alpha.1 → alpha.2) | the new package `@deepseek-ai/dsh-util-values` (add it as a direct dependency — see [DSH-0.1.2-A2-03](v0.1.2-alpha.2.md)) |
+  | `deepFreeze`, `assertNever` from `@deepseek-ai/dsh-llm` (alpha.1 → alpha.2) | `@deepseek-ai/dsh-util-values` |
+  | `collectSessionTitleMessages` from `@deepseek-ai/dsh-session-title` (alpha.1 → alpha.2, made private at `src/index.ts:167`) | moved off the public surface — fold locally with rc.2-equivalent semantics (the text of the first `user/message` whose `source.kind === 'user'`) or use `foldSessionTitle` |
+  | the `SessionEventMap` type declaration for `'todo/write'` (rc.2 → alpha.1; rc.2 switches directly at `core/session/src/invariant.ts:150`) | merged only inside `@deepseek-ai/dsh-tool-todo`; if you don't depend on that package, add a local `declare module '@deepseek-ai/dsh-session/types'` matching the official `TodoItem` structure (the runtime event vocabulary is unchanged and `known-event-types` still lists it) |
+  | `settingsNamespace()`, `installSettingsSection()`, `deepEqualJson()` from `@deepseek-ai/dsh-settings` (alpha.1 → alpha.2) | all deleted. Namespaces become plain string literals validated at compile time by `SettingsProvider.register<const Namespace extends string, T>(ns: Namespace & SettingsNamespaceInput<Namespace>, …)` (`src/index.ts:419`); `installSettingsSection` → `SettingsProvider.installSection(owner, ns, schema, entry, hooks)`; `deepEqualJson` → `dsh-util-values`. To have one source compile on both alpha.1 and alpha.2, write constants as `'my-ns' as SettingsNamespace` — the brand exists only at the type level; the runtime value is the same |
+  | `InvalidPresetIdError`, `PresetExistsError`, `PresetNotWritableError`, `PresetLockedError`, `PresetMountError`, `UnknownPresetError`, `AgentPresetError`, `AgentPresetErrorDetailsMap` from `@deepseek-ai/dsh-agent-presets` (alpha.1 → alpha.2) | deleted, replaced by `RemoteError<'agent-preset/not-found' \| 'agent-preset/invalid' \| 'agent-preset/read-only' \| 'agent-preset/locked'>` (`src/types.ts:37-43`); switch `instanceof XxxError` to branching on `code` — see [DSH-0.1.2-A2-02](v0.1.2-alpha.2.md) |
+  | `LlmModelDiscoveryError` from `@deepseek-ai/dsh-llm` (code `model-discovery-failed`; alpha.1 → alpha.2) | `RemoteError<'llm/model-discovery-rejected'>` (`src/types.ts:261`) |
+  | `FIRST_PARTY_SECTION_ORDER`, `PERSONA_ORDER` from `@deepseek-ai/dsh-system-prompt` (alpha.1 → alpha.2) | deleted, replaced by `systemPrompt.getSectionOrder(name)` / `getContextOrder(name)` (parameter types `PromptSectionOrderName` / `PromptContextOrderName`) |
+  | `TypertRemoteFailure`, `TypertLookupFailure` from `@deepseek-ai/dsh-typert-protocol`; `RemoteStreamError` from `@deepseek-ai/dsh-api-gateway/client`; `RpcErrorDetailsMap`, `RpcErrorCode`, `RpcError` from `@deepseek-ai/dsh-client-connection` (alpha.1 → alpha.2) | deleted, unified into `RemoteError` — see [DSH-0.1.2-A2-02](v0.1.2-alpha.2.md) |
 
-- **验证**: typecheck 全绿且不靠 `@ts-ignore`；本地合并的声明与官方结构逐字段一致；运行时事件流与 rc.2 相同。
-- **来源**: 各包 `0.1.2-alpha.2` tarball 导出比对 + [alpha.2 todo 工具 types.ts](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/todo/tool-todo/src/types.ts) · [alpha.2 `dsh-util-values`](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/util/values/src/index.ts) · [alpha.2 settings `register` 签名](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/settings/settings/src/index.ts) · [alpha.2 agent-presets 错误码](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/preset/agent-presets/src/types.ts) · [alpha.2 system-prompt](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/core/system-prompt/src/index.ts) · [alpha.2 llm types](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/llm/llm/src/types.ts) · [rc.2 `CallId`](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.1-rc.2/packages/llm/llm/src/brand.ts) · dsh-tui 实测（2026-08-30）· [dsh-TUI #647](https://github.com/ccch1mneyyy/dsh-TUI/pull/647)（`settingsNamespace` 是 alpha.1 → alpha.2 唯一的编译中断）
-### R-12 · 升级对象可能就是当前运行宿主
+- **Verification**: typecheck all green without relying on `@ts-ignore`; locally merged declarations match the official structures field by field; the runtime event flow is the same as rc.2.
+- **Source**: comparison of each package's `0.1.2-alpha.2` tarball exports + [alpha.2 todo tool types.ts](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/todo/tool-todo/src/types.ts) · [alpha.2 `dsh-util-values`](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/util/values/src/index.ts) · [alpha.2 settings `register` signature](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/settings/settings/src/index.ts) · [alpha.2 agent-presets error codes](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/preset/agent-presets/src/types.ts) · [alpha.2 system-prompt](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/core/system-prompt/src/index.ts) · [alpha.2 llm types](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/llm/llm/src/types.ts) · [rc.2 `CallId`](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.1-rc.2/packages/llm/llm/src/brand.ts) · dsh-tui measurement (2026-08-30) · [dsh-TUI #647](https://github.com/ccch1mneyyy/dsh-TUI/pull/647) (`settingsNamespace` is the only compile break in alpha.1 → alpha.2)
 
-- **类型**: security
-- **症状**:
-  在 DSH 内部开发或升级插件时，被修改的插件、preset、runtime 组件或其依赖，可能同时就是当前正在运行的 Harness 的一部分。
+### R-12 · The upgrade target may be the currently running host
 
-  因此，一些普通的升级操作可能直接影响正在执行升级任务本身的运行环境，例如停止或重启 DSH、修改当前使用的 preset、修改 Harness runtime，或卸载当前运行环境正在依赖的插件。
+- **Type**: security
+- **Symptoms**:
+   When developing or upgrading plugins inside DSH itself, the plugin, preset, runtime component, or dependency being modified may also be part of the Harness that is currently running.
 
-- **配方**:
-  在执行可能影响运行宿主的操作前，先确认升级目标是否属于当前 session / profile / Harness host。
+   As a result, ordinary upgrade operations can directly affect the runtime environment that is executing the upgrade task itself — for example, stopping or restarting DSH, modifying the preset currently in use, modifying the Harness runtime, or uninstalling a plugin the current runtime depends on.
 
-  至少确认：
-  1. 目标插件是否正在当前 profile 中运行；
-  2. 目标 preset 是否就是当前 Agent 使用的 preset；
-  3. 被修改的 runtime / dependency 是否支撑当前 Harness；
-  4. 准备卸载的插件是否仍被当前运行环境依赖。
+- **Migration recipe**:
+   Before performing an operation that could affect the running host, first confirm whether the upgrade target belongs to the current session / profile / Harness host.
 
-  如果目标同时属于当前运行宿主，不应让 Agent 无条件执行可能导致宿主失效的操作。优先交回用户确认，或通过外部 / 人工路径完成恢复。
+   At minimum, confirm:
+   1. whether the target plugin is running in the current profile;
+   2. whether the target preset is the preset the current Agent uses;
+   3. whether the runtime / dependency being modified underpins the current Harness;
+   4. whether the plugin about to be uninstalled is still depended on by the current runtime.
 
-  对 `stop → start` 一类操作，尽量把整个切换视为一个原子操作，并确保存在独立的恢复路径。
+   If the target also belongs to the currently running host, the Agent must not unconditionally perform operations that could take the host down. Hand control back to the user for confirmation, or complete recovery through an external / manual path.
 
-- **验证**:
-  升级前能够识别当前 Harness 与升级目标之间的依赖关系。
+   For operations like `stop → start`, treat the whole switch as one atomic operation where possible, and make sure an independent recovery path exists.
 
-  对可能影响宿主的操作，应确认：
-  - 当前宿主不会在仍依赖目标时被直接卸载或破坏；
-  - 重启操作存在明确的恢复入口；
-  - 宿主失效后仍有独立方式完成恢复或回滚。
+- **Verification**:
+   Before the upgrade, be able to identify the dependency relationship between the current Harness and the upgrade target.
 
-  本条属于升级前的安全检查，不以“插件成功加载”作为充分验证条件。
+   For operations that may affect the host, confirm:
+   - the current host is not directly uninstalled or broken while it still depends on the target;
+   - the restart operation has a clear recovery entry point;
+   - there is still an independent way to recover or roll back if the host fails.
 
-- **来源**:
-  来自 [DeepSeek Harness Discussion #5120](https://github.com/deepseek-ai/deepseek-harness/discussions/5120) 的社区升级讨论背景，以及此前在 DSH 内部进行插件开发和升级时的实际观察。
+   This entry is a pre-upgrade safety check; "the plugin loaded successfully" is not a sufficient verification condition.
 
-### R-13 · 客户端产品文案迁到本地化 seat 后，按默认语言显示文本锚定宿主 UI 的插件会静默失效
+- **Source**:
+   The background of the community upgrade discussion in [DeepSeek Harness Discussion #5120](https://github.com/deepseek-ai/deepseek-harness/discussions/5120), plus observations from earlier plugin development and upgrades done inside DSH itself.
 
-- **类型**: behavior（组合效应）
-- **症状**: 此走廊几乎把全部 client 包的产品文案迁到 typed `t` / 字典（client-locale full rollout）。宿主 UI 中原本硬编码/固定英文的按钮、导航、预设标签改为按 locale 渲染（如「Session log」→「Session 日志」、权限预设「Full access」→「完全权限」、`access.fullLabel` 删除、新增 `access.preset.readOnly/workspaceWrite/fullAccess`）。凡是**按宿主控件显示文本**定位/匹配宿主 UI 的插件，默认语言正则不再命中 → 定位返回 `null` → 注入项（分享入口、标签等）静默消失，无报错、无 console 异常。
-- **配方**:
-  1. 定位宿主 UI 容器**优先用稳定 slot / data-slot 锚点**（如 `[data-slot="conversation.session.header.utilities"]`），不要依赖显示文本；
-  2. 确需文本匹配时**覆盖所有语言变体**（例 `/session\s*(?:log|日志)/i`），并限定长度/作用域，避免命中无关按钮；
-  3. 注入后**显式断言注入项真的渲染**（存在、非空、同排），把「定位返回 null → 元素静默缺失」变成可观测失败；
-  4. 提供本地化资源的 UI 插件用宿主公开语言注册座位，替代自建 i18n patch，见 [DSH-0.1.2-A1-10](v0.1.2-alpha.1.md)。
-- **验证**: 切非英文语言后硬刷新，断言注入项仍出现在宿主工具区、与宿主按钮同排、点击可用；中英文各跑一遍。
-- **来源**: [client-locale-full-rollout note](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/.agents/notes/implemented/architecture/2026-07-30-client-locale-full-rollout.md) · [alpha.2 `HeaderAction.tsx`（`t('header.action')`）](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/session-query/session-log-export/src/client/HeaderAction.tsx) · [alpha.2 `PermissionSelect.tsx`（`access.preset.*`）](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/client/ui-conversation/src/client/skeleton/PermissionSelect.tsx) · [alpha.2 `locales.ts`（access 文案）](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/client/ui-conversation/src/client/locales.ts)
+### R-13 · After client product copy moves to localized seats, plugins that anchor to host UI by displayed text fail silently
 
-## 分层验证清单
+- **Type**: behavior (combined effect)
+- **Symptoms**: this corridor moves almost all client-package product copy to typed `t` / dictionaries (client-locale full rollout). Buttons, navigation, and preset labels in the host UI that were previously hardcoded/fixed English now render per locale (e.g. "Session log" → "Session 日志", the permission preset "Full access" → "完全权限", `access.fullLabel` removed, `access.preset.readOnly/workspaceWrite/fullAccess` added). Any plugin that locates/matches host UI **by the displayed text of host controls** no longer hits with the default-language regex → the lookup returns `null` → injected items (share entries, labels, etc.) disappear silently, with no error and no console exception.
+- **Migration recipe**:
+  1. When locating host-UI containers, **prefer stable slot / data-slot anchors** (e.g. `[data-slot="conversation.session.header.utilities"]`) over displayed text;
+  2. when text matching is truly needed, **cover all language variants** (e.g. `/session\s*(?:log|日志)/i`) and constrain the length/scope so unrelated buttons are not matched;
+  3. after injection, **explicitly assert the injected item actually renders** (present, non-empty, same row), turning "lookup returns null → element silently missing" into an observable failure;
+  4. UI plugins that provide localized resources should register through the host's public language seat instead of a self-built i18n patch — see [DSH-0.1.2-A1-10](v0.1.2-alpha.1.md).
+- **Verification**: switch to a non-English language and hard-refresh, then assert the injected item still appears in the host tool area, sits in the same row as host buttons, and is clickable; run it once in Chinese and once in English.
+- **Source**: [client-locale-full-rollout note](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/.agents/notes/implemented/architecture/2026-07-30-client-locale-full-rollout.md) · [alpha.2 `HeaderAction.tsx` (`t('header.action')`)](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/session-query/session-log-export/src/client/HeaderAction.tsx) · [alpha.2 `PermissionSelect.tsx` (`access.preset.*`)](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/client/ui-conversation/src/client/skeleton/PermissionSelect.tsx) · [alpha.2 `locales.ts` (access copy)](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.1.2-alpha.2/packages/client/ui-conversation/src/client/locales.ts)
 
-按顺序跑（第 0 层仅采集基线，不设通过门槛）；此后前一层不过不进下一层：
+## Layered validation checklist
 
-0. **baseline（迁移动手前）**: 在仓库自身依赖状态跑机械套件，记录失败指纹与豁免
-   清单（见 R-06）。第 2、3 层（静态与卡片级单测）的失败判定以「相对 baseline
-   新增」为准；其余层没有对应基线，保持各自的绝对门槛。
-1. **依赖解析**: `pnpm list --depth 0 | grep @deepseek-ai` 版本一致；扫描完整 lockfile，确认无旧 cohort、已删除 `dsh-client-runtime` 或偶然保留的旧 peer provider。
-2. **静态**: typecheck + build。注意静态全绿证明不了 wire 契约正确——描述符层的参数漂移在这一层是静默的（[DSH-0.1.2-A1-01](v0.1.2-alpha.1.md)）。
-3. **卡片级单测**: 每个命中触点至少一条断言。Remote 调用点覆盖 `ok: false` 的已知业务码、未知码兜底，以及 gateway 层 catch 分支；测试替身编码同一套描述符表，多/缺 key 就 fail，让漂移变成测试失败事件。另防「静默吞错」：调用点把错误 catch 掉会让 UI 永远空白而所有冒烟照绿（实例见 [DSH-0.1.2-A1-30](v0.1.2-alpha.1.md) 实战批注）——契约形状必须由单测钉死，空 UI 在验证里视同失败。
-4. **真实冷启动**: 完整一轮对话（发消息 → 工具调用 → 回复）。观察日志无 `missed the module table`、无 `service-unavailable` 循环、无入口 `pending`。Web Client 插件另按 [DSH-0.1.2-A1-19](v0.1.2-alpha.1.md) 用打印 token URL 换 Cookie，读取 boot entry、请求宿主公告资源，并验证 bundle 注册、真实挂载、remove 与 page error；注册 id 与包名对齐核对 [DSH-0.1.2-A1-26](v0.1.2-alpha.1.md)。无 API key 也能确定性执行这层的替代形态——**挂载冒烟**：`pnpm build && pnpm pack` 出 tarball → 钉版 CLI `dsh plugin --profile web add file:<tarball>` 装进全新 scratch profile → 启动 keyless `dsh web --port 0` → Playwright 无头渲染逐 tab 扫描（断言挂载标记、无 pageerror/console 错误、懒加载 chunk 正常下发）。参考实现：[dsh-better-sidebar e2e-mount.sh](https://github.com/omdsh-dev/DSH-better-sidebar/blob/main/scripts/e2e-mount.sh)。
-5. **跨 cohort**（若做了 R-02）: 旧宿主与新宿主各跑一次第 4 步。
-6. **headless**（若命中 #7）: 比对退出码及 stdout/stderr 内容分类（[DSH-0.1.2-A1-05](v0.1.2-alpha.1.md)）。
+Run in order (layer 0 only collects the baseline and sets no pass threshold); from then on, do not proceed to the next layer until the previous one passes:
 
-## 回退
+0. **Baseline (before touching the migration)**: run the mechanical suite in the repository's own dependency state and record failure fingerprints and the exemption
+   list (see R-06). Layers 2 and 3 (static and card-level unit tests) judge failure as "new relative to baseline"; the other layers have no corresponding baseline and keep their own absolute thresholds.
+1. **Dependency resolution**: `pnpm list --depth 0 | grep @deepseek-ai` versions consistent; scan the full lockfile and confirm there is no old cohort, no removed `dsh-client-runtime`, and no accidentally retained old peer provider.
+2. **Static**: typecheck + build. Note that all-green static checks cannot prove the wire contract — parameter drift at the descriptor layer is silent at this layer ([DSH-0.1.2-A1-01](v0.1.2-alpha.1.md)).
+3. **Card-level unit tests**: at least one assertion per hit touchpoint. Remote call sites cover the known business codes on `ok: false`, the unknown-code fallback, and the gateway-layer catch branch; test doubles encode the same descriptor table and fail when keys are extra or missing, turning drift into a test-failure event. Also guard against "silent error swallowing": a call site that catches the error leaves the UI blank forever while every smoke stays green (a real instance is in the field note of [DSH-0.1.2-A1-30](v0.1.2-alpha.1.md)) — the contract shape must be pinned down by unit tests, and an empty UI counts as a failure in validation.
+4. **Real cold boot**: one full conversation round (send message → tool call → reply). Observe the logs for no `missed the module table`, no `service-unavailable` loop, and no entry `pending`. Web Client plugins additionally follow [DSH-0.1.2-A1-19](v0.1.2-alpha.1.md): exchange the printed token URL for the cookie, read the boot entry, request the host's advertised resources, and verify bundle registration, real mount, remove, and page errors; check the registration id against the package name per [DSH-0.1.2-A1-26](v0.1.2-alpha.1.md). The alternative form of this layer that runs deterministically without an API key is the **mount smoke**: `pnpm build && pnpm pack` produces a tarball → a pinned CLI installs it into a fresh scratch profile with `dsh plugin --profile web add file:<tarball>` → start keyless `dsh web --port 0` → Playwright headless rendering scans tab by tab (asserting mount markers, no pageerror/console errors, and lazy chunks delivered correctly). Reference implementation: [dsh-better-sidebar e2e-mount.sh](https://github.com/omdsh-dev/DSH-better-sidebar/blob/main/scripts/e2e-mount.sh).
+5. **Cross-cohort** (if R-02 was applied): run step 4 once on the old host and once on the new host.
+6. **Headless** (if #7 is hit): compare exit codes and stdout/stderr content classification ([DSH-0.1.2-A1-05](v0.1.2-alpha.1.md)).
 
-1. 升级前记录 branch/HEAD、resolved 版本、lockfile 与将改配置的 hash；有陌生修改就停止；
-2. 在独立 branch/worktree 迁移，不自动 stash/reset/clean/checkout 用户文件；
-3. tarball overrides 回退只恢复本次明确拥有的配置与 lockfile 路径，并在执行前展示 diff、取得确认；
-4. 第三方 lifecycle script 的任意副作用不能承诺由 Git 回滚；如实列出残留风险；
-5. 若问题源于宿主升级，优先切回记录的宿主版本，而不是盲目扩大插件双版本分支。
+## Rollback
 
-## 待确认
+1. Before upgrading, record branch/HEAD, resolved versions, the lockfile, and hashes of the configuration that will change; stop if there are unfamiliar modifications;
+2. migrate in a dedicated branch/worktree; never auto-stash, reset, clean, or checkout user files;
+3. tarball-overrides rollback restores only the configuration and lockfile paths explicitly owned by this task, and shows the diff and obtains confirmation before executing;
+4. arbitrary side effects of third-party lifecycle scripts cannot be promised rollback via Git; list residual risks truthfully;
+5. if the problem originates from a host upgrade, prefer switching back to the recorded host version rather than blindly widening the plugin's dual-version branching.
 
-- 0.1.2 正式版的 dist-tag、final tag 名与 alpha.2 的差异，需在发版后复核本文件全部条目；
-- R-01/R-02 的 pnpm 版本敏感性与 R-07 的重试参数（约 5 次 / 2 秒退避）均来自单一实战报告，未在其他仓库复现验证；
-- R-06 的 baseline 阶段实现尚未公开推送，公开后复核其来源说明。R-06 属待验证实践（单一管线来源、无多仓库复现）：模式 C 第 0 步是强烈建议的默认动作，可按目标仓库实际情况裁量。
+## Pending confirmation
+
+- The 0.1.2 final release's dist-tag, final tag name, and differences from alpha.2 — all entries in this file must be re-reviewed after the release;
+- R-01/R-02's pnpm version sensitivity and R-07's retry parameters (~5 attempts / 2-second backoff) both come from a single field report and have not been reproduced in other repositories;
+- R-06's baseline-stage implementation has not been pushed publicly yet; re-check its source description once it is public. R-06 is an unverified practice (single-pipeline source, no multi-repository reproduction): step 0 of Mode C is the strongly recommended default action, adjustable to the target repository's actual situation.

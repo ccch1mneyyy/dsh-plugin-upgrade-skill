@@ -1,99 +1,104 @@
-# Pre-flight · 宿主升级前触点自查
+# Pre-flight · touchpoint self-check before a host upgrade
 
-> 这是启发式扫描，不是兼容性证明。七类零命中只表示“未被当前模式发现”，仍须检查
-> 依赖/配置并执行 build、真实挂载和功能烟测。
+> This is a heuristic scan, not proof of compatibility. Zero hits across the seven classes
+> only means "not detected by the current patterns"; you must still check
+> dependencies/configuration and run a build, a real mount, and functional smoke tests.
 
-前六类沿用 [dsh-community-standard 迁移指南](https://github.com/oh-my-dsh/dsh-community-standard/blob/main/guides/migration.md)
-的分类；本 skill 另加 #7 子进程/输出解析。机器校验读取
-[pre-flight-patterns.json](pre-flight-patterns.json)。下列 `rg` 仅为示例；Agent 应优先
-使用当前环境提供的内容搜索工具。
+The first six classes follow the classification of the [dsh-community-standard migration guide](https://github.com/oh-my-dsh/dsh-community-standard/blob/main/guides/migration.md);
+this skill adds #7, subprocess/output parsing. Executable checks read
+[pre-flight-patterns.json](pre-flight-patterns.json). The `rg` commands below are examples
+only; an Agent should prefer the content-search tools provided by the current environment.
 
-## 目录
+## Table of contents
 
-- 0. 先做配置与依赖盘点
-- 1. 构造版本走廊
-- #1 源码 patch / monkey patch
-- #2 内部事件名与持久事件
-- #3 内部服务探测 / Remote
-- #4 直接读写宿主目录
-- #5 内部 UI / 命令 / 工具注册
-- #6 自建 HTTP / WS / RPC / DOM / CSS 通道
-- #7 子进程 / stdout / stderr 解析
-- 特殊面
-- 汇总模板
-- 触点体检（<插件>，<from> → <to>）
+- 0. Configuration and dependency inventory first
+- 1. Build the version corridor
+- #1 source patch / monkey patch
+- #2 internal event names and persistent events
+- #3 internal service probes / Remote
+- #4 direct host directory reads/writes
+- #5 internal UI / commands / tool registration
+- #6 custom HTTP / WS / RPC / DOM / CSS channels
+- #7 subprocess / stdout / stderr parsing
+- Special surfaces
+- Summary template
+- Touchpoint checkup (<plugin>, <from> → <to>)
 
-## 0. 先做配置与依赖盘点
+## 0. Configuration and dependency inventory first
 
-扫描全部受跟踪的源码、测试、脚本、CI 和根配置，排除生成物、vendor 与
-`node_modules`。至少记录：
+Scan all tracked source, tests, scripts, CI, and root configuration, excluding generated
+artifacts, vendor, and `node_modules`. Record at least:
 
-- `package.json` 的插件版本、`peerDependencies`、`engines` 与 `@deepseek-ai/*` 导入；
-- resolved 版本与 lockfile（只认仓库正在使用的包管理器）；
-- 标准 manifest `dsh-plugin.json`（若存在）；
-- profile composition：`cordis.patch.yml`、`agent.cordis.yml`、历史 `cordis.yml`；
-- 实际安装轨：registry 包、Git checkout、workspace/junction 或复制安装。
+- the plugin version, `peerDependencies`, `engines`, and `@deepseek-ai/*` imports in `package.json`;
+- the resolved version and lockfile (trust only the package manager the repository actually uses);
+- the standard manifest `dsh-plugin.json` (if present);
+- profile composition: `cordis.patch.yml`, `agent.cordis.yml`, legacy `cordis.yml`;
+- the actual install track: registry package, Git checkout, workspace/junction, or copied install.
 
-这些文件所有权不同，不能统一称为 manifest，也不能整对象重写未知字段。
+These files have different ownership, so they cannot all be called manifests, and unknown
+fields must not be rewritten whole-object.
 
-## 1. 构造版本走廊
+## 1. Build the version corridor
 
-1. 用精确 tag 确认 from/to；
-2. 按 [版本走廊索引](README.md#版本走廊索引) 的 `from → to` 边连接，禁止按文件名字典序；
-3. 先读完整走廊并折叠“移除后又恢复”等净变化，再生成修改计划；
-4. 缺卡时报告 unsupported gap，先做一手来源调研，不凭记忆自动改插件。
+1. Confirm from/to with exact tags;
+2. connect edges by the `from → to` entries in the [version corridor index](README.md#version-corridor-index) — never by filename lexicographic order;
+3. read the full corridor first and fold net changes such as "removed then restored" before producing the change plan;
+4. when cards are missing, report an unsupported gap and research primary sources first; do not change the plugin from memory.
 
-## #1 源码 patch / monkey patch
+## #1 source patch / monkey patch
 
 ```sh
 rg -n "(^|[^.])patch\.yml|patchedDependencies|patch-package" .
 rg -n "DSH_HARNESS_SOURCE_ROOT|patch-surface|monkeypatch|monkey-patch" .
 ```
 
-命中后逐个记录宿主目标路径与替换意图；目标 tag 中找不到等价 owning 模块时标
-「待确认」，不猜路径。普通 `cordis.patch.yml` 是 profile composition，必须按
-[API-08](api-migration-0.1.2-alpha.2.md#api-08--cordispatchyml-是-composition不是源码-patch)
-归类，不能仅因文件名包含 `patch` 就命中本类。
+For each hit, record the host target path and the replacement intent; when no equivalent
+owning module exists in the target tag, mark it "pending confirmation" — do not guess
+paths. An ordinary `cordis.patch.yml` is profile composition and must be classified per
+[API-08](api-migration-0.1.2-alpha.2.md#api-08--cordispatchyml-is-composition-not-a-source-patch);
+a filename containing `patch` alone is not a hit for this class.
 
-**关联卡**: `DSH-0.1.2-A1-03`
+**Related cards**: `DSH-0.1.2-A1-03`
 
-## #2 内部事件名与持久事件
+## #2 internal event names and persistent events
 
 ```sh
 rg -n "SessionEvent|session/event|ctx\.on\(|subscribe\(" .
 rg -n "tool/code-dispatch|tools-code-mode|connection/reset" .
 ```
 
-区分 producer、persistence、reload、transport 与普通 observer；未知 required 事件不能
-因白名单而被放过。
+Distinguish producer, persistence, reload, transport, and plain observer roles; an unknown
+required event must not slip through just because it is on a whitelist.
 
-**关联卡**: `DSH-0.1.2-A1-02`、`DSH-0.1.2-A1-06`、`DSH-0.1.2-A2-01`
+**Related cards**: `DSH-0.1.2-A1-02`, `DSH-0.1.2-A1-06`, `DSH-0.1.2-A2-01`
 
-## #3 内部服务探测 / Remote
+## #3 internal service probes / Remote
 
 ```sh
 rg -n "APIProxy|apiProxy|ctx\.get\(|ctx\.remote|@Remote" .
 rg -n "@deepseek-ai/dsh-api-.+/client|/internal" .
 ```
 
-同时记录调用所在 face（Host、Web Client、普通 Cordis plugin）与包入口；内部架构迁移
-不能直接当成所有插件的公开 API 建议。
+Also record the face the call lives in (Host, Web Client, ordinary Cordis plugin) and the
+package entry point; an internal architecture migration must not be passed off as a
+public-API recommendation for every plugin.
 
-**关联卡**: `DSH-0.1.2-A1-01`、`DSH-0.1.2-A1-06`、`DSH-0.1.2-A1-11`、`DSH-0.1.2-A1-20`、`DSH-0.1.2-A1-21`、`DSH-0.1.2-A1-22`、`DSH-0.1.2-A1-25`、`DSH-0.1.2-A1-27`、`DSH-0.1.2-A1-30`、`DSH-0.1.2-A1-31`、`DSH-0.1.2-A2-02`、`DSH-0.1.2-A2-05`、`DSH-0.1.2-A2-06`、`DSH-0.1.2-A2-08`、`DSH-0.1.2-A2-10`
+**Related cards**: `DSH-0.1.2-A1-01`, `DSH-0.1.2-A1-06`, `DSH-0.1.2-A1-11`, `DSH-0.1.2-A1-20`, `DSH-0.1.2-A1-21`, `DSH-0.1.2-A1-22`, `DSH-0.1.2-A1-25`, `DSH-0.1.2-A1-27`, `DSH-0.1.2-A1-30`, `DSH-0.1.2-A1-31`, `DSH-0.1.2-A2-02`, `DSH-0.1.2-A2-05`, `DSH-0.1.2-A2-06`, `DSH-0.1.2-A2-08`, `DSH-0.1.2-A2-10`
 
-## #4 直接读写宿主目录
+## #4 direct host directory reads/writes
 
 ```sh
 rg -n "DSH_HOME|\.dsh[/\\]|profiles[/\\]|homedir\(" .
 rg -n "readFile|writeFile|mkdir|openPath" .
 ```
 
-同一行搜索无法发现数据流；命中路径构造函数后继续追踪变量来源与写入目标。不得打印
-配置内容、token、`.npmrc` 或会话日志。
+A line-level search cannot reveal data flow; once a path-construction call is hit, keep
+tracing where the variables come from and where output is written. Never print
+configuration contents, tokens, `.npmrc`, or session logs.
 
-**关联卡**: `DSH-0.1.2-A1-04`、`DSH-0.1.2-A1-13`、`DSH-0.1.2-A1-21`
+**Related cards**: `DSH-0.1.2-A1-04`, `DSH-0.1.2-A1-13`, `DSH-0.1.2-A1-21`
 
-## #5 内部 UI / 命令 / 工具注册
+## #5 internal UI / commands / tool registration
 
 ```sh
 rg -n "registerCommand|registerView|contributes|ctx\.tools|commands\.execute" .
@@ -101,13 +106,14 @@ rg -n "dsh-client-runtime|PropsRuntime|ctx\.slots|useSession|useChat|/internal" 
 rg -n "__ModuleLoader__|PLUGIN_ID" .
 ```
 
-将公开 seam 与内部路径分开；命中旧 client runtime、session/chat selector 或 slot augmentation
-时，继续检查 `dsh.client.inject`、直接类型依赖、keyed snapshot 形状和 type-only Context
-augmentation。机会型 capability 只建议、不自动采用。
+Separate public seams from internal paths; when an old client runtime, a session/chat
+selector, or a slot augmentation is hit, keep checking `dsh.client.inject`, direct type
+dependencies, keyed snapshot shape, and type-only Context augmentation. Opportunistic
+capabilities are suggestions only — never adopt them automatically.
 
-**关联卡**: `DSH-0.1.2-A1-03`、`DSH-0.1.2-A1-06`、`DSH-0.1.2-A1-09`、`DSH-0.1.2-A1-10`、`DSH-0.1.2-A1-11`、`DSH-0.1.2-A1-26`、`DSH-0.1.2-A1-28`、`DSH-0.1.2-A1-29`；详细接口映射见 [API-10](api-migration-0.1.2-alpha.2.md#api-10--web-client-runtime-拆包keyed-chat-snapshot-与命令附件参数)
+**Related cards**: `DSH-0.1.2-A1-03`, `DSH-0.1.2-A1-06`, `DSH-0.1.2-A1-09`, `DSH-0.1.2-A1-10`, `DSH-0.1.2-A1-11`, `DSH-0.1.2-A1-26`, `DSH-0.1.2-A1-28`, `DSH-0.1.2-A1-29`; detailed interface mapping in [API-10](api-migration-0.1.2-alpha.2.md#api-10--web-client-runtime-unbundling-keyed-chat-snapshots-and-command-attachment-parameters)
 
-## #6 自建 HTTP / WS / RPC / DOM / CSS 通道
+## #6 custom HTTP / WS / RPC / DOM / CSS channels
 
 ```sh
 rg -n "createServer\(|WebSocket|MutationObserver|insertRule" .
@@ -115,42 +121,44 @@ rg -n "127\.0\.0\.1|localhost|router\.(get|post|put|delete)\(|/api/" .
 rg -n "contenteditable|setSelectionRange|data-input-scroll" .
 ```
 
-检查认证、Host/Origin、端口生命周期和 teardown；不能因“只监听 loopback”就跳过认证。
+Check authentication, Host/Origin, port lifecycle, and teardown; "listening on loopback
+only" is not a reason to skip authentication.
 
-**关联卡**: `DSH-0.1.2-A1-08`、`DSH-0.1.2-A1-28`
+**Related cards**: `DSH-0.1.2-A1-08`, `DSH-0.1.2-A1-28`
 
-## #7 子进程 / stdout / stderr 解析
+## #7 subprocess / stdout / stderr parsing
 
 ```sh
 rg -n "node:child_process|spawn\(|exec(File)?Sync\(|execa|Bun\.spawn" .
 rg -n "headless|--profile" .
 ```
 
-记录 argv、cwd、env、取消、退出码、stdout/stderr 所有权；不要只验证进程能启动。
+Record argv, cwd, env, cancellation, exit codes, and stdout/stderr ownership; verifying
+that the process can start is not enough.
 
-**关联卡**: `DSH-0.1.2-A1-04`、`DSH-0.1.2-A1-05`、`DSH-0.1.2-A1-06`、`DSH-0.1.2-A1-13`、`DSH-0.1.2-A2-04`
+**Related cards**: `DSH-0.1.2-A1-04`, `DSH-0.1.2-A1-05`, `DSH-0.1.2-A1-06`, `DSH-0.1.2-A1-13`, `DSH-0.1.2-A2-04`
 
-## 特殊面
+## Special surfaces
 
-- 权限/审批：另查 `DSH-0.1.2-A1-07`；
-- 打包/依赖：另查 `DSH-0.1.2-A1-24`、`DSH-0.1.2-A2-03`；
-- 隐私/数据出境：另查 `DSH-0.1.2-A1-12`、`DSH-0.1.2-A1-14`、`DSH-0.1.2-A1-23`。
+- Permissions/approval: see also `DSH-0.1.2-A1-07`;
+- Packaging/dependencies: see also `DSH-0.1.2-A1-24`, `DSH-0.1.2-A2-03`;
+- Privacy/cross-border data: see also `DSH-0.1.2-A1-12`, `DSH-0.1.2-A1-14`, `DSH-0.1.2-A1-23`.
 
-## 汇总模板
+## Summary template
 
 ```markdown
-## 触点体检（<插件>，<from> → <to>）
+## Touchpoint checkup (<plugin>, <from> → <to>)
 
-| 触点 | 命中 | 文件/行 | 适用卡 | 置信说明 |
+| Touchpoint | Hit | File/line | Applicable card | Confidence note |
 |---|---:|---|---|---|
 | #1 patch | | | | |
-| #2 事件 | | | | |
-| #3 服务/Remote | | | | |
-| #4 文件系统 | | | | |
-| #5 UI/命令/工具 | | | | |
-| #6 自建通道 | | | | |
-| #7 子进程/输出 | | | | |
+| #2 events | | | | |
+| #3 services/Remote | | | | |
+| #4 filesystem | | | | |
+| #5 UI/commands/tools | | | | |
+| #6 custom channel | | | | |
+| #7 subprocess/output | | | | |
 
-未命中说明：<扫描范围、排除目录、依赖/配置另行检查结果>
-必须验证：<build/typecheck、真实 profile 挂载、功能路径>
+No-hit notes: <scan scope, excluded directories, dependency/configuration checked separately>
+Must verify: <build/typecheck, real profile mount, functional path>
 ```

@@ -1,9 +1,9 @@
-# 宿主平面的双 cohort 探测（`cordis.patch.yml` 里的 `!!js`）
+# Host-plane dual-cohort probes (`!!js` in `cordis.patch.yml`)
 
-承接 [rollup R-02](rollup-0.1.2.md)。宿主平面插件（TUI 一类）不改产物，把 cohort 差异放进组合层的 `!!js` 探测。三种形态，取自 [dsh-TUI #622](https://github.com/ccch1mneyyy/dsh-TUI/pull/622) 的真实 patch：
+Builds on [rollup R-02](rollup-0.1.2.md). Host-plane plugins (the TUI kind) do not change artifacts; instead they push the cohort difference into `!!js` probes at the composition layer. Three forms, taken from the real patch in [dsh-TUI #622](https://github.com/ccch1mneyyy/dsh-TUI/pull/622):
 
 ```yaml
-# 1. 新宿主才有的子路径：resolve 得到才插入，否则整行自禁用；官方同名行启用时也让位
+# 1. Subpath that exists only on the new host: insert only if resolve succeeds, otherwise the whole row self-disables; also yield when the official row with the same id is enabled
 - id: dsh-tui-subagent-model-selection-settings
   name: '@deepseek-ai/dsh-tool-subagent/model-selection-settings'
   disabled: !!js >-
@@ -13,7 +13,7 @@
       return [...ctx.loader.entries()].some(entry => entry.options.id === 'subagent-model-selection-settings' && !entry.disabled)
     })()
 
-# 2. 能力被 shipped preset 接管：读目标 tag 真实存在的 preset 文件判断，宿主行让位
+# 2. Capability taken over by a shipped preset: decide by reading a preset file that really exists in the target tag; the host row yields
 - id: command-goal
   disabled: !!js >-
     (() => {
@@ -25,7 +25,7 @@
       } catch { return false }
     })()
 
-# 3. 配置形态随 cohort 变：探测包目录决定给不给 roots（见 DSH-0.1.2-A1-21）
+# 3. Config shape varies by cohort: probe the package directory to decide whether to provide roots (see DSH-0.1.2-A1-21)
 - id: dsh-tui-agent-presets
   name: '@deepseek-ai/dsh-agent-presets'
   config: !!js >-
@@ -36,10 +36,10 @@
         const manifest = require.resolve('@deepseek-ai/dsh-agent-presets/package.json')
         if (fs.existsSync(path.join(path.dirname(manifest), 'presets'))) return { default: 'standard' }
       } catch {}
-      return { default: 'standard', roots: [{ path: /* rc.2 的 dsh CLI config/agent-presets 目录 */ '', trust: 'system' }] }
+      return { default: 'standard', roots: [{ path: /* the dsh CLI config/agent-presets directory in rc.2 */ '', trust: 'system' }] }
     })()
 ```
-两条纪律：
+Two disciplines:
 
-1. 探测目标必须是目标 tag 真实存在的东西——`require.resolve` 子路径、包内文件、包目录。拿别的 loader 行当"能力标记"会在那一行被改动时静默失效（dsh-TUI 第一版用 `plugin-package-inventory-deepseek` 代表 alpha，review 后改掉）。
-2. 探测结果进快照：`!!js` 表达式在 rc.2 和 alpha 两个基线上分别求值后比对（dsh-TUI 的 `verify:patch-surface` 用 `@deepseek-ai/cordis-plugin-loader` 的 `evaluate` 按 `baseUrl` 求值，快照记有效状态而不是 YAML 原文）。
+1. The probe target must be something that really exists in the target tag — a `require.resolve` subpath, a file inside the package, or a package directory. Using another loader row as a "capability marker" silently stops working the moment that row changes (the first dsh-TUI version used `plugin-package-inventory-deepseek` to stand for alpha and was changed after review).
+2. Probe results go into snapshots: evaluate the `!!js` expression on each of the rc.2 and alpha baselines and compare (dsh-TUI's `verify:patch-surface` evaluates with `evaluate` from `@deepseek-ai/cordis-plugin-loader` against `baseUrl`; the snapshot records the effective state, not the raw YAML).
