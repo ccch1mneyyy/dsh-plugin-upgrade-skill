@@ -11,7 +11,7 @@ Audit every change observable by consumers **outside the repository** between tw
 
 External compatibility = everything observable by consumers outside the repository: the npm package public API (exports, types, signatures, dependency surface), the `dsh` CLI (commands, flags, profiles, config keys), the wire protocol (SDK JSON-RPC, remote gateway/BFF, ACP, hooks), session data on disk (JSONL logs, SQLite stores and their version guards), the model-visible surface (tool names/schemas, system-prompt output), and the Python SDK's expectations. Internal refactors are background, not findings — aggregate and count them.
 
-Note: `references/audit-playbook.md` is kept in Chinese, and the existing sample report under `examples/` is in English by historical convention; report language follows the user's language (see "Output contract" below).
+Note: report language follows the user's language (see "Output contract" below); the existing sample report under `examples/` is in English by historical convention.
 
 ## Phase 0 — Parse input and choose a mode
 
