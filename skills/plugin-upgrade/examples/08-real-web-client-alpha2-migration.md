@@ -45,5 +45,5 @@
   client artifact 200、client module load 与 remove。
 - 该结果证明样本可运行于目标 alpha.2；不证明 unsupported gap 中每一条中间版本边都已补卡。
 
-对应接口细节见 [API-10](../references/api-migration-0.1.2-alpha.2.md#api-10--web-client-runtime-拆包keyed-chat-snapshot-与命令附件参数)，Web 验收见
-[DSH-0.1.2-A1-19](../references/v0.1.2-alpha.1.md#dsh-012-a1-19--web-插件验收改读宿主启动图与认证-url)。
+对应接口细节见 [API-10](../references/api-migration-0.1.2-alpha.2.md#api-10--web-client-runtime-unbundling-keyed-chat-snapshots-and-command-attachment-parameters)，Web 验收见
+[DSH-0.1.2-A1-19](../references/v0.1.2-alpha.1.md#dsh-012-a1-19--web-plugin-acceptance-now-reads-the-host-boot-manifest-and-the-auth-url)。
