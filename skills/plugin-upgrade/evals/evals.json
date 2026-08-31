@@ -3,26 +3,26 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "以只读模式扫描 examples/legacy-plugin/ 这个夹具，输出七类触点体检表和命中的版本卡片。",
-      "expected_output": "七类触点（源码 patch、内部事件、服务/Remote、宿主目录、UI/命令、自建 HTTP 通道、子进程输出）全部命中；对应卡片映射到 A1-01/A1-02/A1-03/A1-04/A1-08（含 A2-01 回滚对）等；输出包含「未命中说明」与「必须验证」清单；全程不改文件。",
+      "prompt": "Scan the examples/legacy-plugin/ fixture in read-only mode and output the seven-touchpoint inspection table and the version cards that hit.",
+      "expected_output": "All seven touchpoints hit (source patches, internal events, services/Remote, host directories, UI/commands, custom HTTP channels, subprocess output); the corresponding cards map to A1-01/A1-02/A1-03/A1-04/A1-08 (including the A2-01 revert pair) and others; the output includes the \"no-hit notes\" and \"must verify\" checklist; no files are modified throughout.",
       "files": []
     },
     {
       "id": 2,
-      "prompt": "插件在 rc.2 上生产第三方 informational 持久事件（带 ignorable: true），现在要迁到 0.1.2-alpha.2。给出该触点的迁移步骤。",
-      "expected_output": "先读完整走廊折叠净状态：alpha.1 移除 ignorable、alpha.2 恢复（A1-02 → A2-01），因此不要“删了再加”；最终目标为 alpha.2 时保留/恢复 producer marker 并删除 alpha.1 时代的防御性删除；指出公开 Session.append 没有 ignorable 参数的能力缺口，不做 cast 假装已有公开入口；给出 reload/未知事件 fail-closed 的验证步骤。",
+      "prompt": "On rc.2 the plugin emits third-party informational persistent events (with ignorable: true) and now needs to migrate to 0.1.2-alpha.2. Give the migration steps for this touchpoint.",
+      "expected_output": "First read the full corridor-folding net state: alpha.1 removes ignorable, alpha.2 restores it (A1-02 → A2-01), so do not \"delete and re-add\"; when the final target is alpha.2, keep/restore the producer marker and remove the alpha.1-era defensive deletion; point out the capability gap that the public Session.append has no ignorable parameter — do not cast to pretend a public entry point exists; give the verification steps for reload and for fail-closed handling of unknown events.",
       "files": []
     },
     {
       "id": 3,
-      "prompt": "插件用 connection.rpc.handle('/x', handler, { authority: 'loopback' }) 注册自建通道，devDependencies 是 npm 0.1.1-rc.2，宿主将升到 0.1.2-alpha.2。怎么改？",
-      "expected_output": "识别签名漂移：alpha.1 起 handle() 移除第三参数且运行时忽略多余参数；由于 devDependencies 声明基线是 rc.2，采用双兼容写法保留第三参数（typecheck 对 rc.2 通过、alpha 运行时不变），并注明原因；同时提示自建通道必须经 connection 注册以获得统一认证（A1-08），不绕过 token；验证含真实冷启动与无认证 401。",
+      "prompt": "The plugin registers a custom channel with connection.rpc.handle('/x', handler, { authority: 'loopback' }), its devDependencies point at npm 0.1.1-rc.2, and the host will be upgraded to 0.1.2-alpha.2. What needs to change?",
+      "expected_output": "Recognize the signature drift: from alpha.1 on, handle() drops the third parameter and ignores extra arguments at runtime; because the declared devDependencies baseline is rc.2, use the dual-compatibility pattern to keep the third parameter (typecheck passes against rc.2, alpha runtime behavior unchanged) and note the reason; also point out that a custom channel must be registered through connection to get unified authentication (A1-08) — do not bypass the token; verification includes a real cold boot and an unauthenticated 401.",
       "files": []
     },
     {
       "id": 4,
-      "prompt": "我是插件作者。我的 Host + Web Client 插件自身版本 0.6.4，依赖 DSH 0.1.0-rc.6，使用 dsh-client-runtime、useSession(snapshot.nodes) 和 ctx.commands.execute(agent, line, signal)。请给出迁到 DSH 0.1.2-alpha.2 的源码升级方案。",
-      "expected_output": "进入 author-migrate 而不是已安装插件 update；分开记录插件自身 SemVer 与 DSH cohort，并指出 0.1.0-rc.6→rc.2 是 unsupported gap。删除 dsh-client-runtime，按 owning 包迁 ClientContext/SessionId/ConversationNode/CommandRowProps，useSession transcript 改 useChat 并按 order+nodes.get 读取 keyed store，Host execute 无图传 []。检查 dsh.client.inject、直接声明依赖与 type-only augmentation，临时 skipLibCheck false 防 implicit any；lockfile 不得混 cohort。最后再决定插件自身版本，并验证 test/build、pack filename/manifest、隔离 profile install、token→Cookie、boot entry、公告 bundle load/mount/remove。",
+      "prompt": "I am a plugin author. My Host + Web Client plugin is at version 0.6.4, depends on DSH 0.1.0-rc.6, and uses dsh-client-runtime, useSession(snapshot.nodes), and ctx.commands.execute(agent, line, signal). Give me a source upgrade plan to DSH 0.1.2-alpha.2.",
+      "expected_output": "Enter author-migrate rather than installed-plugin update; record the plugin's own SemVer and the DSH cohort separately, and note that 0.1.0-rc.6→rc.2 is an unsupported gap. Remove dsh-client-runtime and migrate ClientContext/SessionId/ConversationNode/CommandRowProps per owning package; switch useSession transcript to useChat and read the keyed store by order + nodes.get; Host execute passes [] when there is no graph. Check dsh.client.inject, directly declared dependencies, and type-only augmentation; temporarily set skipLibCheck to false to guard against implicit any; the lockfile must not mix cohorts. Decide the plugin's own version last, then verify test/build, pack filename/manifest, isolated-profile install, token→Cookie, boot entry, and advertised bundle load/mount/remove.",
       "files": []
     }
   ]
