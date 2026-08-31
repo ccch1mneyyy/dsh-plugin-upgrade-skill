@@ -1,103 +1,93 @@
-# profile 依赖管理配方
+# Profile dependency management recipes
 
-> 承接 [../SKILL.md](../SKILL.md) 的发布轨选择。本文覆盖把插件装进/更新进 `$DSH_HOME/profiles/*` 时的
-> 依赖解析事实与操作配方，取自 17 个插件仓库三个版本台阶的连续迁移（0.1.0-rc.8 → 0.1.1-rc.2 → 0.1.2-alpha.1 → 0.1.2-alpha.2）。技术性迁移坑
-> （tsbuildinfo、oxc 解析等）见 [migration-hygiene](https://github.com/oh-my-dsh/dsh-plugin-upgrade-skill/blob/main/skills/plugin-upgrade/references/migration-hygiene.md)，
-> 本文不重复。
+> Carries on the release-track choice of [../SKILL.md](../SKILL.md). This document covers the dependency-resolution facts and operational recipes for installing/updating plugins into `$DSH_HOME/profiles/*`, drawn from the continuous migration of the 17 plugin repositories across three version steps (0.1.0-rc.8 → 0.1.1-rc.2 → 0.1.2-alpha.1 → 0.1.2-alpha.2). Technical migration pitfalls
+> (tsbuildinfo, oxc parsing, etc.) are covered in [migration-hygiene](https://github.com/oh-my-dsh/dsh-plugin-upgrade-skill/blob/main/skills/plugin-upgrade/references/migration-hygiene.md);
+> this document does not repeat them.
 
-## 1. 两种安装轨的解析事实
+## 1. Resolution facts for the two install tracks
 
-| 声明 | 解析行为 | 适用 |
+| Declaration | Resolution behavior | Applies to |
 |---|---|---|
-| `link:<绝对路径>` | 直接目录联接/软链到本地目录；不产生版本解析 | 本地开发、批量迁移期间 |
-| `github:owner/repo` | 解析默认分支 HEAD，锁文件记录 源码打包地址（codeload）的精确 commit | 发布安装、消费者侧 |
+| `link:<absolute path>` | Directory junction/symlink straight to the local directory; no version resolution | Local development, during batch migration |
+| `github:owner/repo` | Resolves the default-branch HEAD; the lockfile records the exact commit of the source archive URL (codeload) | Release installs, consumer side |
 
-同一 profile 里两种轨可以混用；改名、迁移或收尾时按下面各条处理。
+The two tracks can be mixed within one profile; handle renames, migration, and wrap-up per the items below.
 
-## 2. github 依赖的锁缓存坑：`Already up to date` 不代表拿到了新提交
+## 2. The github dependency lock-cache pitfall: `Already up to date` does not mean you got the new commit
 
-**症状**：远端已推送新提交，`pnpm install` 输出 `Already up to date`，锁文件里的 codeload URL 仍是旧
-commit；启动加载的仍是旧代码。
+**Symptom**: a new commit was pushed upstream, `pnpm install` prints `Already up to date`, and the codeload URL in the lockfile is still the old commit; the code loaded at startup is still the old code.
 
-**原因**：pnpm 对 github 依赖缓存了 HEAD 解析；常规 `install` 不重解析。
+**Cause**: pnpm caches HEAD resolution for github dependencies; a regular `install` does not re-resolve.
 
-**处置**：
+**Fix**:
 
 ```sh
-# 强制重新解析 github 依赖（web / headless 两个 profile 分别执行）
+# Force re-resolution of the github dependency (run for the web and headless profiles separately)
 cd "$DSH_HOME/profiles/web" && pnpm update <pkg>
-# 验证锁文件里的 commit 等于期望 HEAD
-grep 'codeload.*<pkg>' pnpm-lock.yaml   # 应为 tar.gz/<40位commit>
+# Verify that the commit in the lockfile equals the expected HEAD
+grep 'codeload.*<pkg>' pnpm-lock.yaml   # should be tar.gz/<40-char commit>
 ```
 
-批量迁移收尾时对每个 github 轨依赖做一次 `pnpm update`，再核对 commit。
+During batch-migration wrap-up, run `pnpm update` once for every github-track dependency, then verify the commit.
 
-## 3. 插件 npm 包改名（包名前缀变更）的三处同步
+## 3. Three-place sync when a plugin's npm package is renamed (package name prefix change)
 
-包名从 `@deepseek-ai/dsh-x` 改为 `@org/dsh-x` 时，以下三处必须一致，否则 Loader 解析失败：
+When the package name changes from `@deepseek-ai/dsh-x` to `@org/dsh-x`, the following three places must agree, or the Loader fails to resolve:
 
-1. profile `package.json` 的 dependencies key（安装名）；
-2. profile `dsh.profile.bundles` 条目（bundle 名）；
-3. 插件自身 `cordis.patch.yml` 里的行 `name`。
+1. the dependencies key in the profile `package.json` (install name);
+2. the profile `dsh.profile.bundles` entry (bundle name);
+3. the `name` line in the plugin's own `cordis.patch.yml`.
 
-**残留清理**：改名后 `pnpm install` 可能保留旧名字的目录联接（新旧两个目录并存）。确认锁文件只剩新名
-后，手动删除 `node_modules/@旧前缀/旧包名` 的残留目录。
+**Residue cleanup**: after a rename, `pnpm install` may keep the old-name directory junction (old and new directories coexist). After confirming that the lockfile contains only the new name, manually delete the leftover `node_modules/@old-prefix/old-package` directory.
 
-## 4. 共享回退 node_modules 与目录联接的更新语义
+## 4. Update semantics of the shared fallback node_modules and directory junctions
 
-- profile 自身的 `node_modules` 只含 profile 声明依赖；bare 行名解析不到时回退到共享的
-  `$DSH_HOME/profiles/node_modules`（里面是 app 与各 bundle 声明依赖的副本）。
-- 目录联接指向本地工作区包时，**工作区源码更新后重启 dsh 即生效**；host 半段改动必须重启，
-  client 半段才可能硬刷新（见 [migration-hygiene](https://github.com/oh-my-dsh/dsh-plugin-upgrade-skill/blob/main/skills/plugin-upgrade/references/migration-hygiene.md) 第 3 条）。
-- profile 根 `cordis.yml` 会在 boot 时被重写为 `[]`（组合事实在 patch 层）——**不要手改它**，改
-  `cordis.patch.yml`。
+- The profile's own `node_modules` contains only the profile's declared dependencies; when a bare row name fails to resolve, resolution falls back to the shared `$DSH_HOME/profiles/node_modules` (which holds copies of the app's and each bundle's declared dependencies).
+- When a directory junction points at a local workspace package, **a workspace source update takes effect once dsh is restarted**; host-half changes require a restart, and only then can the client half hard-refresh (see item 3 of [migration-hygiene](https://github.com/oh-my-dsh/dsh-plugin-upgrade-skill/blob/main/skills/plugin-upgrade/references/migration-hygiene.md)).
+- The profile root `cordis.yml` is rewritten to `[]` at boot (composition facts live in the patch layer) — **do not edit it by hand**; edit `cordis.patch.yml` instead.
 
-## 5. 宿主 tag 升级后的 profile 联动顺序
+## 5. Profile linkage order after a host tag upgrade
 
-1. checkout 检出精确 tag → `pnpm install` → `pnpm run clean` → `pnpm run build`（clean 排除
-   tsbuildinfo 假阳性）；
-2. 批量插件迁移完成并推送到各自仓库后，回到 profile：`pnpm update` 重解析 github 安装轨依赖；
-3. `dsh --profile <p> --dump-config` 核对行集；
-4. 真实冷启动：目标 tag 的 dsh 起来后，插件清单（pluginInventory）里本插件 entry `active`、
-   无 `pending`。
+1. Check out the exact tag → `pnpm install` → `pnpm run clean` → `pnpm run build` (clean rules out tsbuildinfo false positives);
+2. After the batch plugin migration is done and pushed to each repository, return to the profile: `pnpm update` re-resolves the github-track dependencies;
+3. Verify the row set with `dsh --profile <p> --dump-config`;
+4. Real cold boot: once dsh at the target tag is up, the plugin's entry in the plugin inventory (pluginInventory) is `active`, with no `pending`.
 
-## 6. 自建通道的无浏览器认证冒烟
+## 6. Browser-free authentication smoke for custom channels
 
-0.1.2-alpha.1 起 dsh web 使用 bootstrap token + 签名 Cookie 认证（见
-[DSH-0.1.2-A1-08 · Web/API 通道认证](https://github.com/oh-my-dsh/dsh-plugin-upgrade-skill/blob/main/skills/plugin-upgrade/references/v0.1.2-alpha.1.md)）。
-插件自建了 HTTP/RPC 通道（如 `/tariff/status`）时，发布前用下面流程证明「通道确实挂在统一认证后面」，
-不依赖浏览器/Playwright。已知行为：token 在同一进程可重复兑换、重启才轮换；自建 route 必须经
-`connection` 注册才会自动继承认证，裸 `ctx.webServer.register()` 不继承。
+Since 0.1.2-alpha.1, dsh web uses bootstrap-token + signed-Cookie authentication (see
+[DSH-0.1.2-A1-08 · Web/API channel authentication](https://github.com/oh-my-dsh/dsh-plugin-upgrade-skill/blob/main/skills/plugin-upgrade/references/v0.1.2-alpha.1.md)).
+When a plugin has its own HTTP/RPC channel (such as `/tariff/status`), use the flow below before publishing to prove that "the channel really sits behind the unified authentication", without relying on a browser/Playwright. Known behavior: the token can be exchanged repeatedly within the same process and only rotates on restart; a custom route inherits authentication only when registered through `connection` — a bare `ctx.webServer.register()` does not inherit.
 
-PowerShell（自带 Cookie 容器）：
+PowerShell (with its own Cookie container):
 
 ```powershell
-# 1. 从启动输出抓认证 URL：dsh web: http://127.0.0.1:3190/?token=<T>
-# 2. 兑换 Cookie
+# 1. Grab the auth URL from the startup output: dsh web: http://127.0.0.1:3190/?token=<T>
+# 2. Exchange the Cookie
 $sess = New-Object Microsoft.PowerShell.Commands.WebRequestSession
 Invoke-WebRequest "http://127.0.0.1:3190/?token=$token" -WebSession $sess -UseBasicParsing
-# 3. 带会话调用自建通道 → 断言 200
+# 3. Call the custom channel with the session → assert 200
 $body = @{ type = 'client-request'; rpcId = 'smoke'; method = 'status'; payload = $null } | ConvertTo-Json
 Invoke-WebRequest 'http://127.0.0.1:3190/tariff/status' -Method POST -ContentType 'application/json' -Body $body -WebSession $sess
-# 4. 无认证重发 → 断言 401（证明通道受保护）
+# 4. Resend without authentication → assert 401 (proves the channel is protected)
 Invoke-WebRequest 'http://127.0.0.1:3190/tariff/status' -Method POST -ContentType 'application/json' -Body $body
 ```
 
-curl 等价（`-c/-b` cookie jar）：
+curl equivalent (`-c/-b` cookie jar):
 
 ```sh
-curl -s -c jar.txt "http://127.0.0.1:3190/?token=$TOKEN" >/dev/null      # 兑换 Cookie（303→/）
+curl -s -c jar.txt "http://127.0.0.1:3190/?token=$TOKEN" >/dev/null      # exchange the Cookie (303→/)
 curl -s -b jar.txt -X POST -H 'content-type: application/json' \
   -d '{"type":"client-request","rpcId":"smoke","method":"status","payload":null}' \
-  http://127.0.0.1:3190/tariff/status        # 期望 200
+  http://127.0.0.1:3190/tariff/status        # expect 200
 curl -s -o /dev/null -w '%{http_code}\n' -X POST \
-  http://127.0.0.1:3190/tariff/status        # 期望 401
+  http://127.0.0.1:3190/tariff/status        # expect 401
 ```
 
-## 7. 验证清单
+## 7. Validation checklist
 
-- [ ] 锁文件里每个 github 依赖的 commit 等于期望 HEAD；
-- [ ] 改名插件在锁文件、bundles 列表、cordis.patch.yml 三处同名，旧目录联接已清理；
-- [ ] `--dump-config` 行集符合预期；
-- [ ] 真实冷启动 entry active；
-- [ ] 自建通道认证冒烟：无认证 401、兑换 Cookie 后 200（第 6 节流程）。
+- [ ] Every github dependency's commit in the lockfile equals the expected HEAD;
+- [ ] A renamed plugin uses the same name in the lockfile, the bundles list, and `cordis.patch.yml`, and the old directory junction has been cleaned up;
+- [ ] The `--dump-config` row set matches expectations;
+- [ ] Real cold boot leaves the entry active;
+- [ ] Custom-channel authentication smoke: 401 without authentication, 200 after exchanging the Cookie (Section 6 flow).
