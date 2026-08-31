@@ -1,7 +1,3 @@
----
-name: plugin-release
-description: 打包、发布与分发 DeepSeek Harness（DSH）插件——包括 npm pack 产物校验、GitHub/npm/hub 发布轨选择、未发布 cohort（0.1.2-alpha.*）的 tarball overrides 安装、CI/发布门禁与回滚。当需要发布插件、给插件打 tarball、把插件接入 profile/hub、或处理“alpha 版本不在 npm 上怎么装”时使用；任何发布动作前必须先展示计划并取得用户确认。
----
 [English](SKILL.md) | 简体中文
 
 # plugin-release
