@@ -1,5 +1,7 @@
 # skills/
 
+[English](README.en.md) | 简体中文
+
 所有 Skill 都放在这里。**一个 Skill 一个文件夹**，文件夹名使用 kebab-case。
 
 ## 编写规范
