@@ -52,11 +52,19 @@ function classify(subject) {
   return m ? m[1].toLowerCase() : 'other'
 }
 
-mkdirSync(out, { recursive: true })
-
 const mergeBase = git('merge-base', from, to).trim()
 const fromCommit = git('rev-parse', `${from}^{commit}`).trim()
 const pure = mergeBase === fromCommit
+
+if (!pure) {
+  console.error(
+    `Refusing to audit an impure corridor: merge-base ${mergeBase} != from ${fromCommit}. ` +
+      'The from tag must be the merge base of the selected range.',
+  )
+  process.exit(3)
+}
+
+mkdirSync(out, { recursive: true })
 
 const commitLines = git('log', '--no-merges', '--pretty=format:%h (%ad) %s', '--date=short', `${from}..${to}`)
   .split('\n')
