@@ -74,6 +74,20 @@ fi
 npm publish --access public --tag "$NPM_TAG"
 ```
 
+The no-network semantic check can be run before the publish command with values already
+retrieved by the release workflow:
+
+```sh
+node skills/plugin-release/scripts/verify-release.mjs \
+  --version "$VERSION" \
+  --release-tag "$RELEASE_TAG" \
+  --release-prerelease "$RELEASE_PRERELEASE" \
+  --npm-dist-tag "$NPM_TAG" \
+  --current-latest "$CURRENT_LATEST"
+```
+
+The script only validates inputs and never publishes, tags, or queries the network.
+
 - 宿主验收矩阵与发布通道一致：prerelease 通道锁 alpha 系 tag、stable 通道锁 rc 系 tag，
   **绝不跟随 master/main 冒名验收**；
 - Web Client 插件的 publish 前 smoke 必须覆盖：宿主启动图（`window.__DSH_BOOT__`）公告的
