@@ -123,9 +123,9 @@ measure answer retrieval, not transfer — the same situation H11 handles with i
 frozen skill snapshot. H21 therefore evaluates the following pre-answer snapshot, which predates
 all answer-bearing material for this migration seam:
 
-- commit: `4436bc45f38b9eceaeb73fc54f96d8d465a048d5`
+- commit: `5f7234ba4e00aeaa46c699ea32384389ad38a2a6`
 - tree: `817a48e6795b40a51a08befff62dd03d55e124df`
-- `git archive` SHA-256 (Linux Git 2.43, the CI/Harbor canonical value): `dda38c28af3cc8387e23013ca35dfcf45069c41f1b24f783b2215a51cc883d71`
+- `git archive` SHA-256 (Linux Git 2.43, the CI/Harbor canonical value): `0906ca558c02b20fe095f50ddd3120fab8001e12caccba91613d7ede3bfd7f97`
 - path: `skills/plugin-upgrade`
 
 The snapshot contains neither A1-20 nor an answer-bearing example. The metadata

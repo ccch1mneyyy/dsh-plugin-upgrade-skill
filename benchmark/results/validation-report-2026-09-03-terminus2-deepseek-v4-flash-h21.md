@@ -22,9 +22,9 @@ benchmark score.
 | Task registry name | `dsh-plugin-upgrade/h21-question-answerer-waterfall` |
 | Calibration task copy | `D:/code/archive/dsh-plugin-upgrade-h21-public-v4/H21-question-answerer-waterfall` |
 | Harbor task checksum used by all six model trials | `b34981d852e47fa26a669309081759b9908e8528edc1e6f3f68d253350160061` |
-| Skill snapshot commit | `4436bc45f38b9eceaeb73fc54f96d8d465a048d5` |
+| Skill snapshot commit | `5f7234ba4e00aeaa46c699ea32384389ad38a2a6` |
 | Skill snapshot tree | `817a48e6795b40a51a08befff62dd03d55e124df` |
-| Skill snapshot archive SHA-256 (Linux canonical) | `dda38c28af3cc8387e23013ca35dfcf45069c41f1b24f783b2215a51cc883d71` |
+| Skill snapshot archive SHA-256 (Linux canonical) | `0906ca558c02b20fe095f50ddd3120fab8001e12caccba91613d7ede3bfd7f97` |
 | Skill path | `skills/plugin-upgrade` |
 | Skill partition | Closed-book transfer; snapshot predates the answer-bearing A1-20 material |
 | Source incident | dsh-tui structured-question answerer migration, `DSH-0.1.2-A1-20` |
