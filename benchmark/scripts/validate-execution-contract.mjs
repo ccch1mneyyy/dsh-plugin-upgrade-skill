@@ -54,6 +54,7 @@ const expectedModes = new Map([
   ['H17-merge-calls', 'mutable'],
   ['H18-blame-bubbles', 'mutable'],
   ['H19-workspace-ya', 'mutable'],
+  ['H21-question-answerer-waterfall', 'mutable'],
 ])
 
 const compact = (text) => text.replaceAll('\r\n', '\n').replace(/\s+/g, ' ')
@@ -263,6 +264,76 @@ for (const [taskId, mode] of expectedModes) {
       fail(taskFile, 'H11 skill snapshot already contains the answer-bearing Example 04')
     } catch {
       // Expected: the answer-bearing example must not exist in the evaluated snapshot.
+    }
+  }
+
+  if (taskId === 'H21-question-answerer-waterfall') {
+    const snapshot = '59bed11a83604fc565ed71b1e15b0f94218e499d'
+    const snapshotTree = 'dadf92842d4a78787ecd5e12fcfe4e9882165352'
+    const snapshotArchive = '8e6494c54201d94db56a3b936158ba2841daa88667520b0d3bcdddb22298842b'
+    const agentBlock = taskToml.match(/\[agent\]([\s\S]*?)(?=\n\[|$)/)?.[1] ?? ''
+    for (const [pattern, label] of [
+      [new RegExp(`^skill_snapshot_commit = "${snapshot}"$`, 'm'), 'fixed pre-answer skill snapshot'],
+      [new RegExp(`^skill_snapshot_tree = "${snapshotTree}"$`, 'm'), 'fixed skill tree'],
+      [new RegExp(`^skill_snapshot_archive_sha256 = "${snapshotArchive}"$`, 'm'), 'fixed skill archive hash'],
+      [/^evaluation_partition = "closed-book-transfer"$/m, 'closed-book transfer partition'],
+      [/^skill_snapshot_path = "skills\/plugin-upgrade"$/m, 'skill snapshot path'],
+    ]) {
+      if (!pattern.test(taskToml)) fail(taskFile, `H21 missing contamination control: ${label}`)
+    }
+    if (!/^network_mode = "no-network"$/m.test(agentBlock)) {
+      fail(taskFile, 'H21 agent must run with no network')
+    }
+    if (!/不得使用服务端网页搜索|Do not use provider-side web search/i.test(normalized)) {
+      fail(instructionFile, 'H21 must explicitly prohibit provider-side web search')
+    }
+
+    const dockerfile = join(taskRoot, 'environment', 'Dockerfile')
+    const provenanceFile = join(taskRoot, 'provenance', 'README.md')
+    try {
+      const [dockerfileText, provenance] = await Promise.all([
+        readFile(dockerfile, 'utf8'),
+        readFile(provenanceFile, 'utf8'),
+      ])
+      for (const [pattern, label] of [
+        [/COPY cohorts\/rc2 \/opt\/dsh-cohorts\/rc2/, 'locked rc.2 cohort'],
+        [/COPY cohorts\/alpha2 \/opt\/dsh-cohorts\/alpha2/, 'locked newer cohort'],
+        [/--frozen-lockfile --ignore-scripts/, 'frozen cohort install'],
+      ]) {
+        if (!pattern.test(dockerfileText)) fail(dockerfile, `H21 missing real-cohort control: ${label}`)
+      }
+      if (!provenance.includes(snapshot) || !/answer retrieval/i.test(provenance)) {
+        fail(provenanceFile, 'H21 provenance must explain why the current answer-bearing skill is invalid')
+      }
+      if (!provenance.includes(snapshotTree) || !provenance.includes(snapshotArchive)) {
+        fail(provenanceFile, 'H21 provenance must record the evaluated skill tree and archive hashes')
+      }
+    } catch (error) {
+      fail(taskRoot, `cannot read H21 closed-book controls: ${error.message}`)
+    }
+
+    try {
+      await execFileAsync('git', ['cat-file', '-e', `${snapshot}:skills/plugin-upgrade/SKILL.md`], { cwd: repoRoot })
+    } catch {
+      fail(taskFile, `H21 skill snapshot does not contain skills/plugin-upgrade/SKILL.md: ${snapshot}`)
+    }
+    try {
+      const { stdout } = await execFileAsync('git', ['rev-parse', `${snapshot}:skills/plugin-upgrade`], { cwd: repoRoot })
+      if (stdout.trim() !== snapshotTree) fail(taskFile, `H21 skill snapshot tree mismatch: ${stdout.trim()}`)
+    } catch (error) {
+      fail(taskFile, `cannot resolve H21 skill snapshot tree: ${error.message}`)
+    }
+    try {
+      const digest = await archiveDigest(snapshot, 'skills/plugin-upgrade', repoRoot)
+      if (digest !== snapshotArchive) fail(taskFile, `H21 skill archive hash mismatch: ${digest}`)
+    } catch (error) {
+      fail(taskFile, `cannot hash H21 skill snapshot archive: ${error.message}`)
+    }
+    try {
+      await execFileAsync('git', ['grep', '-q', 'A1-20', snapshot, '--', 'skills/plugin-upgrade'])
+      fail(taskFile, 'H21 skill snapshot already contains the answer-bearing A1-20 card')
+    } catch {
+      // Expected: the pre-answer snapshot must not contain A1-20.
     }
   }
 }
