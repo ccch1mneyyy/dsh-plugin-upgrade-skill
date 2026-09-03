@@ -1,6 +1,6 @@
 # Rollup · 0.1.1 → 0.1.2 Corridor
 
-> Status: based on `dsh-v0.1.2-alpha.5`. The 0.1.2 final release is not out yet — measured on npm dist-tags on 2026-09-03, `next` = `0.1.1-rc.2` and `alpha` = `0.1.2-alpha.5`; note that `latest` is `0.1.1-rc.2` only for the umbrella package `@deepseek-ai/dsh` — the `@deepseek-ai/dsh-*` sub-packages still have `latest` at `0.0.1-rc.1` / `0.1.0-rc.6`, so install sub-packages with an explicit version or the `alpha` tag (the alpha.3→alpha.4 edge is carded in [v0.1.2-alpha.4.md](v0.1.2-alpha.4.md) and the alpha.4→alpha.5 edge in [v0.1.2-alpha.5.md](v0.1.2-alpha.5.md)). Once the final release ships, this file must be re-verified and promoted against the final tag (the original caveat in [issue #1](https://github.com/oh-my-dsh/dsh-plugin-upgrade-skill/issues/1)).
+> Status: based on `dsh-v0.1.2-rc.1` (first release candidate of the 0.1.2 series). The 0.1.2 final release is not out yet — measured on npm dist-tags on 2026-09-03, `next` = `0.1.2-rc.1` and `alpha` = `0.1.2-alpha.5`; note that `latest` is `0.1.1-rc.2` only for the umbrella package `@deepseek-ai/dsh` — the `@deepseek-ai/dsh-*` sub-packages still have `latest` at `0.0.1-rc.1` / `0.1.0-rc.6`, so install sub-packages with an explicit version or the `alpha`/`next` tag (the alpha.3→alpha.4 edge is carded in [v0.1.2-alpha.4.md](v0.1.2-alpha.4.md), the alpha.4→alpha.5 edge in [v0.1.2-alpha.5.md](v0.1.2-alpha.5.md), and the alpha.5→rc.1 edge in [v0.1.2-rc.1.md](v0.1.2-rc.1.md)). Once the final release ships, this file must be re-verified and promoted against the final tag (the original caveat in [issue #1](https://github.com/oh-my-dsh/dsh-plugin-upgrade-skill/issues/1)).
 > Scope: this file does not repeat the version cards. Each change is governed by its card; this file only covers corridor-level increments — cross-cohort coexistence, unpublished-cohort installation, CI/release coupling, pre-migration inventory and baseline attribution, boot-race handling, the three install-channel pitfalls, type-surface export drift, the host's own safety boundary, and the layered validation checklist.
 > Card format: see [README.md](README.md). Touchpoint numbers correspond to the [pre-flight checklist](pre-flight.md).
 
@@ -31,7 +31,7 @@
 
 0. Before starting the migration, collect the baseline per R-06 (i.e., layer 0 of the layered validation checklist);
 1. First run [pre-flight.md](pre-flight.md) to find the touchpoint classes you hit;
-2. Read the full corridor along `from → to` and compute the net state first: [v0.1.2-alpha.1.md](v0.1.2-alpha.1.md) → [v0.1.2-alpha.2.md](v0.1.2-alpha.2.md) → [v0.1.2-alpha.3.md](v0.1.2-alpha.3.md) → [v0.1.2-alpha.4.md](v0.1.2-alpha.4.md) → [v0.1.2-alpha.5.md](v0.1.2-alpha.5.md) (per-file card counts are in the [README.md](README.md) index; the alpha.2→alpha.3 edge has zero cards, alpha.3→alpha.4 has six, alpha.4→alpha.5 has three);
+2. Read the full corridor along `from → to` and compute the net state first: [v0.1.2-alpha.1.md](v0.1.2-alpha.1.md) → [v0.1.2-alpha.2.md](v0.1.2-alpha.2.md) → [v0.1.2-alpha.3.md](v0.1.2-alpha.3.md) → [v0.1.2-alpha.4.md](v0.1.2-alpha.4.md) → [v0.1.2-alpha.5.md](v0.1.2-alpha.5.md) → [v0.1.2-rc.1.md](v0.1.2-rc.1.md) (per-file card counts are in the [README.md](README.md) index; the alpha.2→alpha.3 edge has zero cards, alpha.3→alpha.4 has six, alpha.4→alpha.5 has three, alpha.5→rc.1 has zero);
 3. Return to this file for corridor-level problems — these span single versions and are not covered by the cards;
 4. Finish with the layered validation checklist at the end of this file.
 
@@ -353,6 +353,6 @@ Run in order (layer 0 only collects the baseline and sets no pass threshold); fr
 
 ## Pending confirmation
 
-- The 0.1.2 final release's dist-tag, final tag name, and differences from alpha.2 — all entries in this file must be re-reviewed after the release;
+- The 0.1.2 final release's dist-tag, final tag name, and differences from the rc.1/alpha.5 content — all entries in this file must be re-reviewed after the release (rc.1, the first candidate, is on the `next` channel since 2026-09-03 and carries zero edge changes over alpha.5; see [v0.1.2-rc.1.md](v0.1.2-rc.1.md));
 - R-01/R-02's pnpm version sensitivity and R-07's retry parameters (~5 attempts / 2-second backoff) both come from a single field report and have not been reproduced in other repositories;
 - R-06's baseline-stage implementation has not been pushed publicly yet; re-check its source description once it is public. R-06 is an unverified practice (single-pipeline source, no multi-repository reproduction): step 0 of Mode C is the strongly recommended default action, adjustable to the target repository's actual situation.
