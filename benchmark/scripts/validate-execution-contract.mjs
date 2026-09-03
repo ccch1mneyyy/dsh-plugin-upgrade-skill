@@ -253,11 +253,16 @@ for (const [taskId, mode] of expectedModes) {
     } catch (error) {
       fail(taskFile, `cannot resolve H11 skill snapshot tree: ${error.message}`)
     }
-    try {
-      const digest = await archiveDigest(snapshot, 'skills/plugin-upgrade', repoRoot)
-      if (digest !== snapshotArchive) fail(taskFile, `H11 skill archive hash mismatch: ${digest}`)
-    } catch (error) {
-      fail(taskFile, `cannot hash H11 skill snapshot archive: ${error.message}`)
+    // Git for Windows emits different tar metadata from the Linux Git used to
+    // record the canonical archive hash. Commit and tree object checks above are
+    // portable; verify the tar digest where the canonical Linux format exists.
+    if (process.platform !== 'win32') {
+      try {
+        const digest = await archiveDigest(snapshot, 'skills/plugin-upgrade', repoRoot)
+        if (digest !== snapshotArchive) fail(taskFile, `H11 skill archive hash mismatch: ${digest}`)
+      } catch (error) {
+        fail(taskFile, `cannot hash H11 skill snapshot archive: ${error.message}`)
+      }
     }
     try {
       await execFileAsync('git', ['cat-file', '-e', `${snapshot}:skills/plugin-upgrade/examples/04-dual-cohort-plugin.md`], { cwd: repoRoot })
@@ -323,11 +328,16 @@ for (const [taskId, mode] of expectedModes) {
     } catch (error) {
       fail(taskFile, `cannot resolve H21 skill snapshot tree: ${error.message}`)
     }
-    try {
-      const digest = await archiveDigest(snapshot, 'skills/plugin-upgrade', repoRoot)
-      if (digest !== snapshotArchive) fail(taskFile, `H21 skill archive hash mismatch: ${digest}`)
-    } catch (error) {
-      fail(taskFile, `cannot hash H21 skill snapshot archive: ${error.message}`)
+    // Git for Windows emits different tar metadata from the Linux Git used to
+    // record the canonical archive hash. Commit and tree object checks above are
+    // portable; verify the tar digest where the canonical Linux format exists.
+    if (process.platform !== 'win32') {
+      try {
+        const digest = await archiveDigest(snapshot, 'skills/plugin-upgrade', repoRoot)
+        if (digest !== snapshotArchive) fail(taskFile, `H21 skill archive hash mismatch: ${digest}`)
+      } catch (error) {
+        fail(taskFile, `cannot hash H21 skill snapshot archive: ${error.message}`)
+      }
     }
     try {
       await execFileAsync('git', ['grep', '-q', 'A1-20', snapshot, '--', 'skills/plugin-upgrade'])

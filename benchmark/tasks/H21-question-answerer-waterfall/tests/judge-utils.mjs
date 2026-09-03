@@ -121,10 +121,10 @@ export async function inspectBranching(sourceRoot) {
     const source = stripComments(await readFile(file, 'utf8'))
     const executable = stripStrings(source)
     for (const [pattern, label] of CODE_BRANCH_CHECKS) {
-      if (pattern.test(executable)) hits.push(`${relative(sourceRoot, file)}: ${label}`)
+      if (pattern.test(executable)) hits.push(`${relative(sourceRoot, file).replaceAll('\\', '/')}: ${label}`)
     }
     for (const [pattern, label] of SOURCE_BRANCH_CHECKS) {
-      if (pattern.test(source)) hits.push(`${relative(sourceRoot, file)}: ${label}`)
+      if (pattern.test(source)) hits.push(`${relative(sourceRoot, file).replaceAll('\\', '/')}: ${label}`)
     }
   }
   return { ok: hits.length === 0, hits }
