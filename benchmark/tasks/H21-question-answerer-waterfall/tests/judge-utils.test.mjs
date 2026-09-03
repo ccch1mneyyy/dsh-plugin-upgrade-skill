@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
@@ -71,49 +71,130 @@ test('capability detection and the owner/delegate contract are not flagged', asy
   }
 })
 
-test('each banned strategy category is detected in executable text', async () => {
+test('each retained banned strategy category is still detected', async () => {
   const root = await mkdtemp(join(tmpdir(), 'h21-scan-bad-'))
   try {
     const cases = [
       ['version-literal.js', "export const a = '0.1.1-rc.2'\n"],
       ['tag-literal.js', 'export const tag = "alpha.2"\n'],
-      ['arity.js', 'export const fn = () => null\nvoid fn.length\n'],
+      ['version-var.js', 'export const detect = () => hostVersion\n'],
+      ['semver-api.js', "import semver from 'semver'\nexport const ok = (v) => semver.valid(v) !== null\n"],
       ['identity.js', 'export function f(ctx, service) { return ctx === service.ctx }\n'],
-      ['identity-reverse.js', 'export function g(service) { return service.ctx !== null && host === service }\n'],
+      ['identity-reverse.js', 'export function g(service, ctx) { return service.ctx !== ctx }\n'],
       ['root-register.js', 'export function h(ctx) { return ctx.root.on("x", () => null) }\n'],
       ['base-url.js', 'export const probe = (ctx) => ctx.baseUrl\n'],
-      ['catch-retry.js', 'export function r() { try { register() } catch (error) { fallback() } }\n'],
       ['retry-word.js', 'export function t() { retry(attach) }\n'],
       ['env-probe.js', 'import { readFileSync } from "node:fs"\nexport const pkg = JSON.parse(readFileSync("package.json", "utf8"))\n'],
-      ['source-inspect.js', 'export function s(fn) { return fn.toString() }\n'],
     ]
     for (const [file, source] of cases) await writeFile(join(root, file), source)
     const result = await inspectBranching(root)
     assert.equal(result.ok, false)
     const labels = result.hits.map((hit) => hit.split(': ')[1])
-    assert.ok(labels.includes('DSH version literal'), JSON.stringify(result.hits))
-    assert.ok(labels.includes('DSH tag literal'), JSON.stringify(result.hits))
-    assert.ok(labels.includes('function arity inspection'), JSON.stringify(result.hits))
-    assert.ok(labels.includes('host/context identity matching'), JSON.stringify(result.hits))
-    assert.ok(labels.includes('ctx.root registration'), JSON.stringify(result.hits))
-    assert.ok(labels.includes('host identity probing'), JSON.stringify(result.hits))
-    assert.ok(labels.includes('exception retry/fallback'), JSON.stringify(result.hits))
-    assert.ok(labels.includes('explicit retry'), JSON.stringify(result.hits))
-    assert.ok(labels.includes('environment/package capability probe'), JSON.stringify(result.hits))
-    assert.ok(labels.includes('implementation source inspection'), JSON.stringify(result.hits))
+    for (const label of [
+      'DSH version literal',
+      'DSH tag literal',
+      'DSH version variable',
+      'version parsing',
+      'host/context identity matching',
+      'ctx.root registration',
+      'host identity probing',
+      'explicit retry',
+      'environment/package capability probe',
+    ]) {
+      assert.ok(labels.includes(label), `${label} missing from ${JSON.stringify(result.hits)}`)
+    }
+    for (const label of ['function arity inspection', 'exception retry/fallback', 'implementation source inspection']) {
+      assert.ok(!labels.includes(label), `${label} must no longer fire (${JSON.stringify(result.hits)})`)
+    }
   } finally {
     await rm(root, { recursive: true, force: true })
   }
 })
 
-test('nested source helpers are scanned too', async () => {
+test('legitimate try/catch, environment reads, lengths, toString and guards are not flagged', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'h21-scan-legit-idioms-'))
+  try {
+    await writeFile(join(root, 'register.js'), `
+      export function attach(ctx, service, questions) {
+        if (service === null || ctx === undefined) throw new Error('no service')
+        try {
+          if (questions.length === 0) return null
+          if (process.env.DSH_LOG === '1') {
+            console.error('questions.length=' + questions.length.toString())
+          }
+          return service.registerProvider({ ask: (request) => String(request.text).length })
+        } catch (error) {
+          console.error('retry later: ' + error.toString() + ' (semver policy in package.json)')
+          return null
+        }
+      }
+    `)
+    assert.deepEqual(await inspectBranching(root), { ok: true, hits: [] })
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('helpers reached through local relative imports are scanned transitively', async () => {
   const root = await mkdtemp(join(tmpdir(), 'h21-scan-nested-'))
   try {
     await mkdir(join(root, 'nested'))
-    await writeFile(join(root, 'nested', 'helper.mjs'), 'export const probe = (ctx) => ctx.root\n')
+    await writeFile(join(root, 'register.js'), [
+      "import { probe } from './nested/helper'",
+      "import './nested/missing.js'",
+      'export const run = () => probe()',
+      '',
+    ].join('\n'))
+    await writeFile(join(root, 'nested', 'helper.mjs'), "import { deep } from './deep.js'\nexport const probe = (ctx) => deep(ctx)\n")
+    await writeFile(join(root, 'nested', 'deep.js'), 'export const deep = (ctx) => ctx.root\n')
     const result = await inspectBranching(root)
     assert.equal(result.ok, false)
-    assert.ok(result.hits.some((hit) => hit.includes('helper.mjs')), JSON.stringify(result.hits))
+    assert.ok(
+      result.hits.some((hit) => hit.startsWith('nested/deep.js') && hit.includes('ctx.root registration')),
+      JSON.stringify(result.hits),
+    )
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('imports that escape the source root or name bare packages are not followed', async () => {
+  const parent = await mkdtemp(join(tmpdir(), 'h21-scan-external-'))
+  const root = join(parent, 'src')
+  try {
+    await mkdir(root)
+    await writeFile(join(root, 'register.js'), [
+      "import { probe } from '../outside.js'",
+      "import semverLib from 'semver'",
+      "import { readFile } from 'node:fs/promises'",
+      'export const run = () => probe() && semverLib && readFile',
+      '',
+    ].join('\n'))
+    // Banned code outside the scanned root: must be invisible to the scan.
+    await writeFile(join(parent, 'outside.js'), 'export const probe = (ctx) => ctx.root\n')
+    assert.deepEqual(await inspectBranching(root), { ok: true, hits: [] })
+  } finally {
+    await rm(parent, { recursive: true, force: true })
+  }
+})
+
+test('package.json manifests are never scanned as implementation source', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'h21-scan-manifest-'))
+  try {
+    await writeFile(join(root, 'register.js'), "import manifest from './package.json' with { type: 'json' }\nexport const name = () => manifest.name\n")
+    await writeFile(join(root, 'package.json'), '{ "name": "h21-fixture", "version": "0.1.1-rc.2", "description": "alpha.2 tag era" }\n')
+    assert.deepEqual(await inspectBranching(root), { ok: true, hits: [] })
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('the reference solution itself passes the branching scan', async () => {
+  const oracle = new URL('../solution/plugin/src/register.js', import.meta.url)
+  const root = await mkdtemp(join(tmpdir(), 'h21-scan-oracle-'))
+  try {
+    await writeFile(join(root, 'register.js'), await readFile(oracle, 'utf8'))
+    assert.deepEqual(await inspectBranching(root), { ok: true, hits: [] })
   } finally {
     await rm(root, { recursive: true, force: true })
   }

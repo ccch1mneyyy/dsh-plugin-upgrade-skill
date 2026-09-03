@@ -1,6 +1,8 @@
 FROM node:24-bookworm@sha256:be23f54a88d34e8824c741b19b91064094f92c1c97b194144bfc8b50d67258e2
 
-RUN apt-get update && apt-get install -y --no-install-recommends git \
+# git owns the fixture baseline; tmux/asciinema let terminal agents start
+# without a second best-effort package installation during the closed agent phase.
+RUN apt-get update && apt-get install -y --no-install-recommends git tmux asciinema \
     && rm -rf /var/lib/apt/lists/*
 
 RUN npm install -g pnpm@11.24.0

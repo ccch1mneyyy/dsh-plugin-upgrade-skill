@@ -9,9 +9,9 @@
 // dispatch are absent from the prompt and fixture README, but discoverable by
 // inspecting the read-only published cohort packages allowed by the task.
 //
-// Static source scan caps: version parsing/literals, function `.length`,
-// host/context identity matching, ctx.root registration, and catch/retry
-// fallbacks zero the alpha.2 behavior checkpoints; capability detection
+// Static source scan caps: version parsing/literals, host/context identity
+// matching, ctx.root registration, and explicit retry fallbacks zero the
+// alpha.2 behavior checkpoints; capability detection
 // (`typeof service.registerProvider === 'function'`) is valid and passes.
 
 import assert from 'node:assert/strict'
@@ -300,9 +300,18 @@ async function probeWaterfallCohort(install) {
         throw new Error('repeat install did not return a disposer function')
       }
 
+      // Probe before calling the stale disposer: a correct replacement must
+      // already have removed the first listener, rather than relying on the
+      // old handle to remove it later.
+      const preDisposed = await dispatchScoped('agent-foreign', 'alpha-repeat-pre-dispose-q')
+      assert.deepEqual(replacementSaw, ['alpha-repeat-pre-dispose-q'], 'the replacement answerer did not supersede the first listener before stale disposal')
+      assert.deepEqual(saw, sawBefore, 'the first answerer still claims before stale disposal (claims stack instead of superseding)')
+      assert.deepEqual(fell, fellBefore, 'a current-owner request reached the downstream before stale disposal')
+      assert.deepEqual(preDisposed, answerMarker('alpha-repeat-pre-dispose-q'), 'the replacement request was not answered as a claim before stale disposal')
+
       disposer() // stale: from the first attach, must leave the new listener alive
       const claimed = await dispatchScoped('agent-foreign', 'alpha-repeat-claim-q')
-      assert.deepEqual(replacementSaw, ['alpha-repeat-claim-q'], 'the replacement answerer did not claim exactly the re-attached request (the stale disposer killed the new listener, or the old listener still claims)')
+      assert.deepEqual(replacementSaw, ['alpha-repeat-pre-dispose-q', 'alpha-repeat-claim-q'], 'the replacement answerer did not claim exactly the re-attached requests (the stale disposer killed the new listener, or the old listener still claims)')
       assert.deepEqual(saw, sawBefore, 'the first answerer still claims after repeat attach (claims stack instead of superseding)')
       assert.deepEqual(fell, fellBefore, 'a current-owner request reached the downstream before the live disposer ran')
       assert.deepEqual(claimed, answerMarker('alpha-repeat-claim-q'), 'the re-attached request was not answered as a claim')
@@ -310,7 +319,7 @@ async function probeWaterfallCohort(install) {
       replacementDisposer()
       const after = await dispatchScoped('agent-foreign', 'alpha-repeat-disposed-q')
       assert.deepEqual(after, downstreamMarker('alpha-repeat-disposed-q'), 'a request after the replacement disposer ran did not fall through to the downstream')
-      assert.deepEqual(replacementSaw, ['alpha-repeat-claim-q'], 'the replacement answerer claimed after its own disposer ran')
+      assert.deepEqual(replacementSaw, ['alpha-repeat-pre-dispose-q', 'alpha-repeat-claim-q'], 'the replacement answerer claimed after its own disposer ran')
       assert.deepEqual(saw, sawBefore, 'the first answerer claimed after the replacement disposer ran')
       assert.deepEqual(fell, [...fellBefore, 'alpha-repeat-disposed-q'], 'the post-disposal request did not reach the downstream exactly once')
       steps.push({ label: 'repeat attach does not stack claims; the stale disposer spares the replacement listener; the replacement disposer stops claims afterwards', points: 10, ok: true })

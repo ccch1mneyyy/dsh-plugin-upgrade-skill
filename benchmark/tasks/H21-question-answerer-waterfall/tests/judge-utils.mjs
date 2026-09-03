@@ -4,13 +4,14 @@
 // and alpha.2) instead of the fake harness H11 used, so nothing here is
 // mnemon-specific: the utilities cover process/exec plumbing, the final JSON
 // emit, fixture change detection, candidate import, cohort manifest
-// integrity, real-package module URLs, and a small comment-stripped source
-// scan that flags the cross-cohort gaming strategies the task bans.
+// integrity, real-package module URLs, and a comment-stripped source scan
+// over the src root and its locally imported helpers that flags the
+// cross-cohort gaming strategies the task bans.
 
 import { execFile } from 'node:child_process'
-import { realpathSync } from 'node:fs'
+import { realpathSync, statSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
-import { relative } from 'node:path'
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 // Windows cannot execFile bare `npm`/`git` shims without their extension.
@@ -108,56 +109,135 @@ export function cohortModuleUrl(cohortRoot, pkg, file = 'lib/index.js') {
 }
 
 /**
- * Scan every source file under `sourceRoot` (comments stripped) for banned
- * cross-cohort branching strategies. Capability detection such as
- * `typeof service.registerProvider === 'function'` is deliberately NOT among
- * the patterns; the rejected strategies are DSH version parsing/literals,
- * function arity inspection, host/context identity matching, registering on
- * ctx.root, and catch/retry fallbacks.
+ * Scan the implementation files that can actually run: every source file
+ * directly under `sourceRoot`, plus every file reachable from them through
+ * local relative static import/export specifiers (`import ... from './x'`,
+ * `export ... from './x'`, side-effect `import './x'`), breadth-first. A
+ * specifier resolves with common source suffixes (`.js`, `.mjs`, `.ts`,
+ * `.tsx`, directory `index.*`), may never escape `sourceRoot`, and an
+ * unresolvable or non-source target (including `package.json`) is ignored —
+ * so manifest text, fixture test files and the task wording never influence
+ * the result.
+ *
+ * Two check sets run per file:
+ *
+ * - CODE_BRANCH_CHECKS over comment+string-stripped text: DSH version
+ *   variables, semver API use, host/context identity equality, `ctx.root`
+ *   registration, `baseUrl` access and explicit `retry(...)` calls. Ordinary
+ *   code — collection `.length`, `try/catch`, `process.env` reads,
+ *   `.toString()` calls, capability tests such as
+ *   `typeof service.registerProvider === 'function'`, and error-message
+ *   wording — is deliberately NOT among the patterns.
+ * - VERSION_SOURCE_CHECKS over comment-stripped text with string literals
+ *   intact: DSH version/tag literals (`0.1.1-rc.2`, `alpha.2`) and reads of a
+ *   `package.json` manifest. These rules must see string contents, so they
+ *   run before string stripping; an ordinary error message merely mentioning
+ *   "semver" or a package name matches neither set.
  */
 export async function inspectBranching(sourceRoot) {
+  const root = resolve(sourceRoot)
+  const pending = []
+  const visited = new Set()
   const hits = []
-  for (const file of await sourceFiles(sourceRoot)) {
+  for (const entry of await readdir(root, { withFileTypes: true })) {
+    if (entry.isFile() && SOURCE_FILE_RE.test(entry.name)) pending.push(join(root, entry.name))
+  }
+  for (let index = 0; index < pending.length; index += 1) {
+    const file = pending[index]
+    if (visited.has(file)) continue
+    visited.add(file)
     const source = stripComments(await readFile(file, 'utf8'))
     const executable = stripStrings(source)
+    const rel = relative(root, file).replaceAll('\\', '/')
     for (const [pattern, label] of CODE_BRANCH_CHECKS) {
-      if (pattern.test(executable)) hits.push(`${relative(sourceRoot, file).replaceAll('\\', '/')}: ${label}`)
+      if (pattern.test(executable)) hits.push(`${rel}: ${label}`)
     }
-    for (const [pattern, label] of SOURCE_BRANCH_CHECKS) {
-      if (pattern.test(source)) hits.push(`${relative(sourceRoot, file).replaceAll('\\', '/')}: ${label}`)
+    for (const [pattern, label] of VERSION_SOURCE_CHECKS) {
+      if (pattern.test(source)) hits.push(`${rel}: ${label}`)
+    }
+    for (const specifier of localImportSpecifiers(source)) {
+      const target = resolveLocalImport(root, file, specifier)
+      if (target && !visited.has(target)) pending.push(target)
     }
   }
   return { ok: hits.length === 0, hits }
 }
 
+// Rules over executable text (comments and string literals removed), so error
+// messages, comments and capability test strings can never trigger them. The
+// host/context identity rules ignore null/undefined/true/false and string
+// literals on the compared side, keeping plain guards such as
+// `service === null`, `ctx === undefined`, `service == null` and
+// `typeof service.registerProvider === 'function'` legal. The `(?!=)` after
+// each operator stops a backtracked `==`/`!=` alternative from consuming the
+// first two characters of `===`/`!==` and skipping the guard.
 const CODE_BRANCH_CHECKS = [
-  [/\b(?:fn|func|handler|callback|listener|register|provider|answerer|hook|method|candidate|next|registerProvider|on|waterfall|handle)\.length\b/, 'function arity inspection'],
   [/\bsemver\b/i, 'version parsing'],
   [/\b(?:dsh|host|cohort)[._-]?version\b/i, 'DSH version variable'],
-  [/\bprocess\.env\b/, 'environment/package capability probe'],
-  [/\b(?:ctx|context|service|host)\s*(?:===|!==|==|!=)\s*/, 'host/context identity matching'],
-  [/\s*(?:===|!==|==|!=)\s*\b(?:ctx|context|service|host)\b/, 'host/context identity matching'],
-  [/\b(?:ctx|context)\.root\b/, 'ctx.root registration'],
+  [/(?<![$\w.])(?:ctx|context|service|host)\b\s*(?:===|!==|==|!=)(?!=)\s*(?!\s*(?:(?:null|undefined|true|false)\b|['"`]))/, 'host/context identity matching'],
+  [/(?:===|!==|==|!=)(?!=)\s*(?<![$\w.])(?:ctx|context|service|host)\b/, 'host/context identity matching'],
+  [/(?<![$\w.])(?:ctx|context)\.root\b/, 'ctx.root registration'],
   [/\bbaseUrl\b/, 'host identity probing'],
-  [/\bcatch\s*\(/, 'exception retry/fallback'],
   [/\bretry\s*\(/i, 'explicit retry'],
-  [/\.toString\s*\(/, 'implementation source inspection'],
 ]
 
-const SOURCE_BRANCH_CHECKS = [
+// Version-string rules need the string literals themselves, so they run on
+// comment-stripped source (strings intact) instead of executable text. The
+// patterns are exact DSH version/tag shapes and manifest reads, so an error
+// message merely naming "semver" or a package never matches.
+const VERSION_SOURCE_CHECKS = [
   [/\b0\.1\.[12](?:-[0-9A-Za-z.-]+)?\b/, 'DSH version literal'],
   [/\b(?:rc|alpha)\.[12]\b/i, 'DSH tag literal'],
   [/(?:readFile(?:Sync)?|require\.resolve|import\.meta\.resolve)\s*\([^)]*\bpackage\.json\b/s, 'environment/package capability probe'],
 ]
 
-async function sourceFiles(root) {
-  const files = []
-  for (const entry of await readdir(root, { withFileTypes: true })) {
-    const path = `${root}/${entry.name}`
-    if (entry.isDirectory()) files.push(...await sourceFiles(path))
-    else if (/\.m?[jt]s$/.test(entry.name)) files.push(path)
+// Only source files enter or join the scan: manifests, READMEs and other
+// non-code text (e.g. package.json "version" fields) never do.
+const SOURCE_FILE_RE = /\.(?:[cm]?[jt]sx?)$/
+const IMPORT_SUFFIXES = ['.js', '.mjs', '.ts', '.tsx']
+
+// Local relative static specifiers only: side-effect `import './x'` and the
+// `... from './x'` clause of static import/export statements. Bare package
+// names, node: builtins and dynamic `import(...)` never match.
+const LOCAL_SPECIFIER_RE = /\bimport\s*(['"])(\.{1,2}\/[^'"]+)\1|\b(?:import|export)\b(?:(?!\bfrom\b)[\s\S])*?\bfrom\s*(['"])(\.{1,2}\/[^'"]+)\3/g
+
+function localImportSpecifiers(source) {
+  const specifiers = []
+  for (const match of source.matchAll(LOCAL_SPECIFIER_RE)) {
+    const specifier = match[2] ?? match[4]
+    if (specifier) specifiers.push(specifier)
   }
-  return files.sort()
+  return [...new Set(specifiers)]
+}
+
+/** Resolve one `./`- or `../`-rooted specifier, or null when it cannot land
+ * on an existing source file inside `sourceRoot`. Node-like order: an
+ * explicit source extension resolves directly, otherwise the common suffixes
+ * are tried before a directory `index.*` (the bare extensionless path is
+ * never itself a file candidate, so e.g. a `./package.json` import cannot
+ * drag the manifest into the scan). */
+function resolveLocalImport(sourceRoot, fromFile, specifier) {
+  const base = resolve(dirname(fromFile), specifier)
+  const candidates = SOURCE_FILE_RE.test(base)
+    ? [base]
+    : [
+        ...IMPORT_SUFFIXES.map((suffix) => `${base}${suffix}`),
+        ...IMPORT_SUFFIXES.map((suffix) => join(base, `index${suffix}`)),
+      ]
+  for (const candidate of candidates) {
+    const rel = relative(sourceRoot, candidate)
+    if (rel === '' || rel.startsWith('..') || isAbsolute(rel)) continue
+    if (isFile(candidate)) return candidate
+  }
+  return null
+}
+
+function isFile(path) {
+  try {
+    return statSync(path).isFile()
+  } catch {
+    return false
+  }
 }
 
 // Explanatory comments and string literals may name rejected strategies; score
