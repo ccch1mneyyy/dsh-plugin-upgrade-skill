@@ -15,25 +15,33 @@ benchmark score.
 
 | Item | Value |
 | --- | --- |
-| Benchmark content commit (snapshot target) | `d1dd4be9933b473b6947cf3774ea1b1c4d227254` |
-| Snapshot commit | `07e2a86127d66e7222af0c36151b3350ff792757` |
+| Benchmark contribution commit (snapshot target) | `6e5916a407c366e3cc9ac00474fcbd535e7e19d6` |
+| Evaluation snapshot manifest commit | `30466b7a46b70187b67c9a16c7307245944150a8` |
+| Executable task/judge commit used for the calibration copy | `d1dd4be9933b473b6947cf3774ea1b1c4d227254` |
 | Working branch | `feat/benchmark-question-answerer-waterfall` |
 | Task | `H21-question-answerer-waterfall` |
 | Task registry name | `dsh-plugin-upgrade/h21-question-answerer-waterfall` |
 | Calibration task copy | `D:/code/archive/dsh-plugin-upgrade-h21-public-v4/H21-question-answerer-waterfall` |
 | Harbor task checksum used by all six model trials | `b34981d852e47fa26a669309081759b9908e8528edc1e6f3f68d253350160061` |
-| Skill snapshot commit | `5f7234ba4e00aeaa46c699ea32384389ad38a2a6` |
-| Skill snapshot tree | `817a48e6795b40a51a08befff62dd03d55e124df` |
-| Skill snapshot archive SHA-256 (Linux canonical) | `0906ca558c02b20fe095f50ddd3120fab8001e12caccba91613d7ede3bfd7f97` |
+| Canonical upstream-reachable Skill snapshot commit | `5f7234ba4e00aeaa46c699ea32384389ad38a2a6` |
+| Local calibration materialization commit | `4436bc45f38b9eceaeb73fc54f96d8d465a048d5` |
+| Skill snapshot tree (both commits) | `817a48e6795b40a51a08befff62dd03d55e124df` |
+| Canonical Skill archive SHA-256 (Linux Git) | `0906ca558c02b20fe095f50ddd3120fab8001e12caccba91613d7ede3bfd7f97` |
 | Skill path | `skills/plugin-upgrade` |
 | Skill partition | Closed-book transfer; snapshot predates the answer-bearing A1-20 material |
 | Source incident | dsh-tui structured-question answerer migration, `DSH-0.1.2-A1-20` |
 
-The calibration copy was made from the checked-in task before two subsequent
-non-executable wording/comment edits. Its substantive runtime difference is the
-agent network policy: its `[agent].network_mode` is `"public"` instead of the
-checked-in `"no-network"`. The checked-in task remains the canonical contribution
-artifact.
+The six trials injected files materialized from `4436bc45…`. That PR-head object and
+the canonical upstream-main ancestor `5f7234ba…` resolve to the exact same
+`skills/plugin-upgrade` tree (`817a48e…`), so the evaluated Skill bytes do not
+change. Contribution metadata uses `5f7234ba…` because a clean upstream checkout
+can resolve it during CI; its Linux `git archive` hash is recorded above.
+
+The calibration copy was made from the checked-in task before later
+metadata-only and non-executable wording/comment edits. Its substantive runtime
+difference is the agent network policy: its `[agent].network_mode` is `"public"`
+instead of the checked-in `"no-network"`. The checked-in task remains the canonical
+contribution artifact.
 
 ## 2. Environment and protocol
 
