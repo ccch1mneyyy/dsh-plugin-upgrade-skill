@@ -14,7 +14,7 @@ test('claims the rc.2-era provider seat with an ask adapter', () => {
     },
   }
 
-  const returned = installQuestionAnswerer({}, service, 'owner-a', {
+  const returned = installQuestionAnswerer({}, service, { agentId: 'owner-a' }, {
     ask: () => 'irrelevant',
   })
 
@@ -41,7 +41,7 @@ test('forwards each request to the answerer and resolves with its answer', async
     },
   }
 
-  const disposer = installQuestionAnswerer({}, service, 'owner-a', answerer)
+  const disposer = installQuestionAnswerer({}, service, { agentId: 'owner-a' }, answerer)
   const answer = await provider.ask({ text: 'what now?' })
 
   assert.equal(answer, 'answered:what now?')
@@ -68,7 +68,7 @@ test('propagates answerer failures unchanged', async () => {
     },
   }
 
-  installQuestionAnswerer({}, service, 'owner-a', answerer)
+  installQuestionAnswerer({}, service, { agentId: 'owner-a' }, answerer)
 
   await assert.rejects(() => provider.ask({ text: 'what now?' }), (error) => error === failure)
 })
@@ -272,6 +272,7 @@ test('a fresh attach supersedes the previous one on the waterfall host', async (
     async (request) => hostAnswer(request),
   )
 
+  assert.deepEqual(await claim(), { origin: 'answerer' }, 'the fresh attach must supersede the first one before stale disposal')
   disposerOne()
   assert.deepEqual(await claim(), { origin: 'answerer' }, 'disposing the stale handle must not kill the fresh attach')
   disposerTwo()
@@ -292,8 +293,8 @@ test('a fresh attach supersedes the previous one on the legacy seat', () => {
     },
   }
 
-  const disposerOne = installQuestionAnswerer({}, service, 'owner-a', { ask: async () => 'a' })
-  const disposerTwo = installQuestionAnswerer({}, service, 'owner-a', { ask: async () => 'b' })
+  const disposerOne = installQuestionAnswerer({}, service, { agentId: 'owner-a' }, { ask: async () => 'a' })
+  const disposerTwo = installQuestionAnswerer({}, service, { agentId: 'owner-a' }, { ask: async () => 'b' })
 
   assert.equal(active !== null, true)
   assert.equal(typeof disposerOne, 'function')

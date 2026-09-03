@@ -15,10 +15,17 @@ answerer)` from `src/register.js`:
 
 - `ctx` — the host context;
 - `service` — the host's user-questions service instance;
-- `owner` — the identity of the agent/session this answerer currently serves;
+- `owner` — a mutable object whose string `agentId` names the agent/session
+  this answerer currently serves;
 - `answerer` — the interactive implementation; it must expose
   `ask(request)`, which collects the human answer for a structured question
   and resolves with it.
+
+When a request identifies an agent, `request.agent` is an object with a string
+`id`. Compare identifier values (`request.agent.id` and `owner.agentId`), not
+object identity. A request with no `request.agent` is agentless. The agentless
+integration assertion is limited to a topology where the listener and
+user-questions service share one Context.
 
 It returns a disposer that releases the registration.
 

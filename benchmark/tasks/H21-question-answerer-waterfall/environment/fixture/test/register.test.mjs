@@ -14,7 +14,7 @@ test('claims the rc.2-era provider seat with an ask adapter', () => {
     },
   }
 
-  const returned = installQuestionAnswerer({}, service, 'owner-a', {
+  const returned = installQuestionAnswerer({}, service, { agentId: 'owner-a' }, {
     ask: () => 'irrelevant',
   })
 
@@ -41,7 +41,7 @@ test('forwards each request to the answerer and resolves with its answer', async
     },
   }
 
-  const disposer = installQuestionAnswerer({}, service, 'owner-a', answerer)
+  const disposer = installQuestionAnswerer({}, service, { agentId: 'owner-a' }, answerer)
   const answer = await provider.ask({ text: 'what now?' })
 
   assert.equal(answer, 'answered:what now?')
@@ -68,7 +68,7 @@ test('propagates answerer failures unchanged', async () => {
     },
   }
 
-  installQuestionAnswerer({}, service, 'owner-a', answerer)
+  installQuestionAnswerer({}, service, { agentId: 'owner-a' }, answerer)
 
   await assert.rejects(() => provider.ask({ text: 'what now?' }), (error) => error === failure)
 })

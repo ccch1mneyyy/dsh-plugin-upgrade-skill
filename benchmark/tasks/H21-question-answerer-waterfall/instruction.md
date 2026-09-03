@@ -38,8 +38,12 @@ two supported host cohorts, however:
 
 The fixture exports one entry point, `installQuestionAnswerer(ctx, service, owner,
 answerer)`, returning a disposer. `answerer.ask(request)` collects the human
-answer for a structured question and resolves with it. `owner` is the identity of
-the agent/session this answerer currently serves.
+answer for a structured question and resolves with it. The public data contract
+is deliberately small: `owner` is a mutable object with a string `agentId`
+property; a request that identifies an agent carries `request.agent` as an
+object with a string `id`; compare those identifier values rather than object
+identity. A request with no `request.agent` is agentless. The legacy mock does
+not consume `owner`, but this input contract applies to both cohorts.
 
 Repair `src/register.js` so that **one implementation** works against both real
 cohorts and keeps the following contract intact:
@@ -51,16 +55,17 @@ cohorts and keeps the following contract intact:
    a host that still offers the legacy seat must be served through that seat exactly
    as before. Add focused regression coverage when needed for the newer host.
 3. On the alpha.2 real host the same implementation must reach the answerer: a
-   question raised for the current `owner` is claimed and answered; a question
-   addressed to a foreign owner is not swallowed — it must pass on so the rest of
-   the host's chain can still handle it; after `owner` changes, questions for the
-   new owner are answered and the previous binding is not left behind; after the
-   returned disposer runs, no further question is answered.
+   question raised for the current `owner.agentId` is claimed and answered; a
+   question addressed to a foreign `request.agent.id` is not swallowed — it must
+   pass on so the rest of the host's chain can still handle it; after
+   `owner.agentId` changes, questions for the new owner are answered and the
+   previous binding is not left behind; after the returned disposer runs, no
+   further question is answered.
 4. The implementation must not parse a DSH version, match a host identity string,
    or retry a failed registration.
-5. If you prove agentless delivery (a question carrying no owner/agent), run that
-   proof where the answerer listener and the real user-questions service share the
-   same Context, and record sibling-entry non-delivery as a topology boundary
+5. If you prove agentless delivery (a request carrying no `request.agent`), run
+   that proof where the answerer listener and the real user-questions service
+   share the same Context. Treat sibling-entry non-delivery as a topology boundary
    rather than a universal behavior claim.
 
 Make the changes directly under `/app/fixture/`. Verify with the fixture's `npm

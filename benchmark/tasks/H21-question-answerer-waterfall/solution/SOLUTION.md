@@ -56,7 +56,7 @@ exception-driven fallback is used anywhere.
 
 - `plugin/src/register.js` is the reference implementation.
 - `plugin/test/register.test.mjs` is the fixture regression suite for the
-  oracle run: it keeps the three original rc.2-era mock tests verbatim
+  oracle run: it keeps the three original rc.2-era mock assertions
   (legacy seat claim, forwarding, failure propagation) and adds a package-free
   mock of the newer host's waterfall dispatch (`on` + innermost-fallthrough)
   covering agentless claim, current-owner claim, one-shot foreign delegation,

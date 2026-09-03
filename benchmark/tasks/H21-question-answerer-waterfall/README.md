@@ -11,9 +11,12 @@ attach path throws on the newer host and questions go unanswered.
 The agent must produce one implementation that works against both real published
 cohorts, keeps the exported entry point, the legacy mock tests, and the
 claim/delegate/owner-swap/dispose contract, and proves it against the real
-services installed under `/opt/dsh-cohorts/`. See [instruction.md](instruction.md)
-for the task and [provenance/README.md](provenance/README.md) for the fixed
-incident, package, and contamination evidence.
+services installed under `/opt/dsh-cohorts/`. The fixture defines `owner` as a
+mutable `{ agentId: string }` object and an addressed request's agent as
+`{ id: string }`; matching is by identifier value, while a missing
+`request.agent` is agentless. See [instruction.md](instruction.md) for the task
+and [provenance/README.md](provenance/README.md) for the fixed incident, package,
+and contamination evidence.
 
 - **Environment:** Node 24, git, and two separately locked published package
   closures under `/opt/dsh-cohorts/{rc2,alpha2}`. Agent network access is
