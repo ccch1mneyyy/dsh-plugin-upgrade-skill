@@ -4,7 +4,7 @@
   "createdAt": "2026-09-03",
   "repository": "oh-my-dsh/dsh-plugin-upgrade-skill",
   "benchmark": {
-    "commit": "113b0eb6f60230af5754ace01e2cffa84414e8b3",
+    "commit": "d1dd4be9933b473b6947cf3774ea1b1c4d227254",
     "taskCount": 43,
     "tasks": [
       "S1-static-scan",
