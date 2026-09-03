@@ -120,12 +120,12 @@ The current main skill tree already contains the full `DSH-0.1.2-A1-20` recipe
 (the `'user-questions/request'` event string, the claim/delegate semantics, and
 the dsh-tui field notes), so a with-skill trial against the current tree would
 measure answer retrieval, not transfer — the same situation H11 handles with its
-frozen skill snapshot. H21 therefore evaluates the following pre-answer
-snapshot, which is the parent of the commit that first added the A1-20 card:
+frozen skill snapshot. H21 therefore evaluates the following pre-answer snapshot, which predates
+all answer-bearing material for this migration seam:
 
-- commit: `59bed11a83604fc565ed71b1e15b0f94218e499d`
-- tree: `dadf92842d4a78787ecd5e12fcfe4e9882165352`
-- `git archive` SHA-256 (Linux Git 2.43, the CI/Harbor canonical value): `8e6494c54201d94db56a3b936158ba2841daa88667520b0d3bcdddb22298842b`
+- commit: `4436bc45f38b9eceaeb73fc54f96d8d465a048d5`
+- tree: `817a48e6795b40a51a08befff62dd03d55e124df`
+- `git archive` SHA-256 (Linux Git 2.43, the CI/Harbor canonical value): `dda38c28af3cc8387e23013ca35dfcf45069c41f1b24f783b2215a51cc883d71`
 - path: `skills/plugin-upgrade`
 
 The snapshot contains neither A1-20 nor an answer-bearing example. The metadata

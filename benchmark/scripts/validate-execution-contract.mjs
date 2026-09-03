@@ -273,9 +273,9 @@ for (const [taskId, mode] of expectedModes) {
   }
 
   if (taskId === 'H21-question-answerer-waterfall') {
-    const snapshot = '59bed11a83604fc565ed71b1e15b0f94218e499d'
-    const snapshotTree = 'dadf92842d4a78787ecd5e12fcfe4e9882165352'
-    const snapshotArchive = '8e6494c54201d94db56a3b936158ba2841daa88667520b0d3bcdddb22298842b'
+    const snapshot = '4436bc45f38b9eceaeb73fc54f96d8d465a048d5'
+    const snapshotTree = '817a48e6795b40a51a08befff62dd03d55e124df'
+    const snapshotArchive = 'dda38c28af3cc8387e23013ca35dfcf45069c41f1b24f783b2215a51cc883d71'
     const agentBlock = taskToml.match(/\[agent\]([\s\S]*?)(?=\n\[|$)/)?.[1] ?? ''
     for (const [pattern, label] of [
       [new RegExp(`^skill_snapshot_commit = "${snapshot}"$`, 'm'), 'fixed pre-answer skill snapshot'],

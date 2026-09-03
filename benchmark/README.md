@@ -281,8 +281,8 @@ Tasks carrying `metadata.skill_snapshot_commit` are an exception to attaching th
 current skill tree. Their provenance document identifies the exact pre-answer skill
 snapshot that must be materialized for the with-skill condition. In particular, H11
 uses `7d33bf4c492da250c94f48aebd29bb16877d7a36` because the current Example 04
-contains its answer, while H21 uses `59bed11a83604fc565ed71b1e15b0f94218e499d`
-because the current A1-20 card contains its answer. No-skill and generic-skill runs
+contains its answer, while H21 uses `4436bc45f38b9eceaeb73fc54f96d8d465a048d5`
+because it predates the A1-20 migration material. No-skill and generic-skill runs
 keep the same task image and prompt.
 
 ## Grading design notes
